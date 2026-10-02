@@ -6,7 +6,7 @@ it in order while several people and agents work in it.
 ## Install
 
 ```bash
-uv tool install atlas-cli
+uv tool install paranoid-atlas-cli
 ```
 
 ## Develop
@@ -20,5 +20,5 @@ uv run pytest
 ## Release
 
 Bump `version` in `pyproject.toml`, commit, then push a matching tag (`v0.1.1` for `0.1.1`):
-the `Publish atlas-cli to PyPI` workflow builds and publishes it. A tag that doesn't match the
+the `Publish paranoid-atlas-cli to PyPI` workflow builds and publishes it. A tag that doesn't match the
 version fails the workflow.

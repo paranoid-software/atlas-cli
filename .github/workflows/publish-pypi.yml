@@ -1,4 +1,4 @@
-name: Publish atlas-cli to PyPI
+name: Publish paranoid-atlas-cli to PyPI
 
 on:
   push:
