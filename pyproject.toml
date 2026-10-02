@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "atlas-cli"
+version = "0.1.0"
+description = "The Atlas method made executable: create and keep Atlases in order"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Paranoid Software" },
+]
+license = "MIT"
+keywords = ["atlas", "cli", "agents", "spec-driven", "claude"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://atlas.paranoid.software"
+Repository = "https://github.com/paranoid-software/atlas-cli"
+Issues = "https://github.com/paranoid-software/atlas-cli/issues"
+
+[project.scripts]
+atlas = "atlas_cli.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlas_cli"]
