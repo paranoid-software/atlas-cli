@@ -1,3 +1,3 @@
 from importlib.metadata import version
 
-__version__ = version("atlas-cli")
+__version__ = version("paranoid-atlas-cli")

@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "atlas-cli"
-version = "0.1.0"
+name = "paranoid-atlas-cli"
+version = "0.1.1"
 description = "The Atlas method made executable: create and keep Atlases in order"
 readme = "README.md"
 requires-python = ">=3.11"
