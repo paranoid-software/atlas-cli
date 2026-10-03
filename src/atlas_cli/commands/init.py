@@ -1,21 +1,20 @@
 import argparse
-import json
 from datetime import date
 from importlib.resources import files
 from pathlib import Path
 from string import Template
+
+from atlas_cli.atlasfiles import ATLAS_TOML, CLAUDE_SETTINGS, VSCODE_SETTINGS, plan_json_file, write_atlas_file
 
 ATLAS_FILES = {
     "CLAUDE.md": "CLAUDE.md",
     "STATUS.md": "STATUS.md",
     "BACKLOG.md": "BACKLOG.md",
     "_archived/README.md": "archived.md",
-    "_settings/atlas.toml": "atlas.toml",
+    ATLAS_TOML: "atlas.toml",
 }
-CLAUDE_SETTINGS = ".claude/settings.local.json"
-VSCODE_SETTINGS = ".vscode/settings.json"
 GITIGNORE = ".gitignore"
-ATLAS_MARKERS = ("_settings/atlas.toml", "CLAUDE.md", "STATUS.md")
+ATLAS_MARKERS = (ATLAS_TOML, "CLAUDE.md", "STATUS.md")
 
 
 def register(subparsers) -> None:
@@ -28,7 +27,7 @@ def run(args: argparse.Namespace) -> int:
     found = [marker for marker in ATLAS_MARKERS if (folder / marker).exists()]
     if found:
         print(f"This folder is already an Atlas (found {', '.join(found)}); nothing was changed.")
-        if "_settings/atlas.toml" not in found:
+        if ATLAS_TOML not in found:
             print("It predates _settings/ — bring it up to date with `atlas migrate`.")
         return 1
     try:
@@ -38,7 +37,7 @@ def run(args: argparse.Namespace) -> int:
         return 1
     for path, (action, content) in plan.items():
         if content is not None:
-            _write(folder / path, content)
+            write_atlas_file(folder / path, content)
         print(f"{action} {path}")
     if plan[GITIGNORE][0] == "kept":
         print(f"Check that the existing {GITIGNORE} keeps only the Atlas's own files (see 07-sharing-an-atlas).")
@@ -51,23 +50,13 @@ def _plan_base_set(folder: Path, today: date) -> dict[str, tuple[str, str | None
         path: ("created", _render_template(template, name=folder.name, today=today.isoformat()))
         for path, template in ATLAS_FILES.items()
     }
-    plan[CLAUDE_SETTINGS] = _plan_json(folder / CLAUDE_SETTINGS, _complete_claude_settings)
-    plan[VSCODE_SETTINGS] = _plan_json(folder / VSCODE_SETTINGS, _complete_vscode_settings)
+    plan[CLAUDE_SETTINGS] = plan_json_file(folder / CLAUDE_SETTINGS, _complete_claude_settings)
+    plan[VSCODE_SETTINGS] = plan_json_file(folder / VSCODE_SETTINGS, _complete_vscode_settings)
     if (folder / GITIGNORE).exists():
         plan[GITIGNORE] = ("kept", None)
     else:
         plan[GITIGNORE] = ("created", _render_template("gitignore"))
     return plan
-
-
-def _plan_json(target: Path, complete) -> tuple[str, str]:
-    if not target.exists():
-        return "created", _dump_json(complete({}))
-    try:
-        settings = json.loads(target.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        raise ValueError(f"Cannot read {target.name} in {target.parent.name}/ ({error.msg})") from error
-    return "updated", _dump_json(complete(settings))
 
 
 def _complete_claude_settings(settings: dict) -> dict:
@@ -83,15 +72,6 @@ def _complete_vscode_settings(settings: dict) -> dict:
     return settings
 
 
-def _dump_json(settings: dict) -> str:
-    return json.dumps(settings, indent=2, ensure_ascii=False) + "\n"
-
-
 def _render_template(template: str, **values: str) -> str:
     text = files("atlas_cli.templates").joinpath(template).read_text(encoding="utf-8")
     return Template(text).safe_substitute(values)
-
-
-def _write(target: Path, content: str) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8", newline="\n")

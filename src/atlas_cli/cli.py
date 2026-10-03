@@ -2,7 +2,7 @@ import argparse
 import sys
 
 from atlas_cli import __version__
-from atlas_cli.commands import init
+from atlas_cli.commands import doctor, init, link
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -13,6 +13,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"atlas {__version__}")
     subparsers = parser.add_subparsers(dest="command", metavar="<command>")
     init.register(subparsers)
+    link.register(subparsers)
+    doctor.register(subparsers)
     return parser
 
 
