@@ -8,6 +8,7 @@ from atlas_cli.atlasfiles import (
     CLAUDE_SETTINGS,
     VSCODE_SETTINGS,
     plan_json_file,
+    quote_toml_string,
     read_atlas_toml,
     write_atlas_file,
 )
@@ -116,19 +117,14 @@ def _header_name(line: str) -> str | None:
 def _source_section(name: str, remote: str | None) -> str:
     lines = [f"[sources.{_toml_key(name)}]"]
     if remote is not None:
-        lines.append(f"remote = {_toml_string(remote)}")
+        lines.append(f"remote = {quote_toml_string(remote)}")
     return "\n".join(lines) + "\n"
 
 
 def _toml_key(name: str) -> str:
     if _BARE_KEY.fullmatch(name):
         return name
-    return _toml_string(name)
-
-
-def _toml_string(value: str) -> str:
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
+    return quote_toml_string(name)
 
 
 def _origin(path: Path) -> str | None:

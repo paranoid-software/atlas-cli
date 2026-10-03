@@ -1,6 +1,8 @@
 import json
 import tomllib
+from importlib.resources import files
 from pathlib import Path
+from string import Template
 
 ATLAS_TOML = "_settings/atlas.toml"
 CLAUDE_SETTINGS = ".claude/settings.local.json"
@@ -25,6 +27,16 @@ def read_atlas_toml(path: Path) -> tuple[str, dict]:
     if not isinstance(declared, dict):
         raise ValueError(f"Cannot read {ATLAS_TOML} (sources is not a table)")
     return text, declared
+
+
+def render_template(template: str, **values: str) -> str:
+    text = files("atlas_cli.templates").joinpath(template).read_text(encoding="utf-8")
+    return Template(text).safe_substitute(values)
+
+
+def quote_toml_string(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def plan_json_file(target: Path, complete) -> tuple[str, str]:

@@ -1,10 +1,15 @@
 import argparse
 from datetime import date
-from importlib.resources import files
 from pathlib import Path
-from string import Template
 
-from atlas_cli.atlasfiles import ATLAS_TOML, CLAUDE_SETTINGS, VSCODE_SETTINGS, plan_json_file, write_atlas_file
+from atlas_cli.atlasfiles import (
+    ATLAS_TOML,
+    CLAUDE_SETTINGS,
+    VSCODE_SETTINGS,
+    plan_json_file,
+    render_template,
+    write_atlas_file,
+)
 
 ATLAS_FILES = {
     "CLAUDE.md": "CLAUDE.md",
@@ -47,7 +52,7 @@ def run(args: argparse.Namespace) -> int:
 
 def _plan_base_set(folder: Path, today: date) -> dict[str, tuple[str, str | None]]:
     plan = {
-        path: ("created", _render_template(template, name=folder.name, today=today.isoformat()))
+        path: ("created", render_template(template, name=folder.name, today=today.isoformat()))
         for path, template in ATLAS_FILES.items()
     }
     plan[CLAUDE_SETTINGS] = plan_json_file(folder / CLAUDE_SETTINGS, _complete_claude_settings)
@@ -55,7 +60,7 @@ def _plan_base_set(folder: Path, today: date) -> dict[str, tuple[str, str | None
     if (folder / GITIGNORE).exists():
         plan[GITIGNORE] = ("kept", None)
     else:
-        plan[GITIGNORE] = ("created", _render_template("gitignore"))
+        plan[GITIGNORE] = ("created", render_template("gitignore"))
     return plan
 
 
@@ -70,8 +75,3 @@ def _complete_vscode_settings(settings: dict) -> dict:
     settings["git.autoRepositoryDetection"] = True
     settings.setdefault("git.scanRepositories", [])
     return settings
-
-
-def _render_template(template: str, **values: str) -> str:
-    text = files("atlas_cli.templates").joinpath(template).read_text(encoding="utf-8")
-    return Template(text).safe_substitute(values)
