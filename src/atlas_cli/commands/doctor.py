@@ -2,6 +2,7 @@ import shlex
 from pathlib import Path
 
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_toml
+from atlas_cli.sourcestate import judge_source
 
 
 def register(subparsers) -> None:
@@ -42,11 +43,11 @@ def _report(folder: Path) -> list[str]:
 
 
 def _declared_source(folder: Path, name: str, remote: str | None) -> list[str]:
-    slot = folder / name
-    if slot.is_symlink():
-        if slot.exists():
-            return [f"ok {name}"]
-        return [f"broken {name} -> {slot.readlink()}"]
+    state = judge_source(folder, name)
+    if state == "ok":
+        return [f"ok {name}"]
+    if state == "broken":
+        return [f"broken {name} -> {(folder / name).readlink()}"]
     lines = [f"missing {name}"]
     if remote is None:
         lines.append(f"atlas link {shlex.quote(name)} <path>")
