@@ -1,4 +1,5 @@
 import json
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -259,3 +260,58 @@ def test_change_nothing_when_a_file_cannot_be_read(monkeypatch, capsys):
 
         assert _snapshot(atlas) == before
         assert "Cannot read COCO_CANDIDATES.md" in capsys.readouterr().out
+
+
+def test_declare_a_git_source_without_origin_as_having_no_remote(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as context:
+        atlas = _build_v0_atlas(context, monkeypatch, [])
+        scratch = context.root / "scratch"
+        scratch.mkdir()
+        subprocess.run(["git", "init", "-q", str(scratch)], check=True)
+        (atlas / "scratch").symlink_to(scratch, target_is_directory=True)
+
+        assert main(["migrate", "--apply"]) == 0
+
+        assert _settings(atlas)["sources"] == {"scratch": {}}
+        assert "declared scratch (no remote)" in capsys.readouterr().out.splitlines()
+
+
+def test_declare_a_broken_symlink_as_broken_and_let_doctor_report_it(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as context:
+        atlas = _build_v0_atlas(context, monkeypatch, [])
+        (atlas / "gone").symlink_to(context.root / "nowhere", target_is_directory=True)
+
+        assert main(["migrate", "--apply"]) == 0
+
+        assert _settings(atlas)["sources"] == {"gone": {}}
+        assert "declared gone (broken)" in capsys.readouterr().out.splitlines()
+        assert main(["doctor"]) == 1
+        assert capsys.readouterr().out.splitlines()[0].startswith("broken gone")
+
+
+def test_keep_an_existing_plugin_file_and_leave_the_coco_file_in_place(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as context:
+        atlas = _build_v0_atlas(context, monkeypatch, [])
+        (atlas / "COCO_CANDIDATES.md").write_text("old staged rule\n", encoding="utf-8")
+        (atlas / "CODING_RULES_CANDIDATES.md").write_text("current staged rule\n", encoding="utf-8")
+
+        assert main(["migrate", "--apply"]) == 0
+
+        assert (atlas / "CODING_RULES_CANDIDATES.md").read_text(encoding="utf-8") == "current staged rule\n"
+        assert (atlas / "COCO_CANDIDATES.md").read_text(encoding="utf-8") == "old staged rule\n"
+        out = capsys.readouterr().out.splitlines()
+        assert "kept CODING_RULES_CANDIDATES.md" in out
+        assert "note: COCO_CANDIDATES.md left in place because CODING_RULES_CANDIDATES.md already exists" in out
+
+
+def test_refuse_a_model_version_it_does_not_know_and_change_nothing(tmp_path, monkeypatch, capsys):
+    (tmp_path / "_settings").mkdir()
+    (tmp_path / "_settings/atlas.toml").write_text("version = 2\n", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("# acme\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    before = _snapshot(tmp_path)
+
+    assert main(["migrate", "--apply"]) == 1
+
+    assert _snapshot(tmp_path) == before
+    assert "declares version 2, a model atlas migrate does not know" in capsys.readouterr().out
