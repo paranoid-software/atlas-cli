@@ -1,6 +1,4 @@
 import argparse
-import re
-import subprocess
 from pathlib import Path
 
 from atlas_cli.atlasfiles import (
@@ -8,12 +6,11 @@ from atlas_cli.atlasfiles import (
     CLAUDE_SETTINGS,
     VSCODE_SETTINGS,
     plan_json_file,
-    quote_toml_string,
     read_atlas_toml,
     write_atlas_file,
 )
-
-_BARE_KEY = re.compile(r"[A-Za-z0-9_-]+")
+from atlas_cli.settingscompletion import add_directory, add_scan_repository
+from atlas_cli.sourcedeclaration import append_source, read_origin, render_source_section
 
 
 def register(subparsers) -> None:
@@ -50,7 +47,7 @@ def _plan_link(folder: Path, name: str, given: Path) -> dict:
         raise ValueError(f"{given} does not exist")
     target = given.expanduser().resolve()
     text, declared = read_atlas_toml(toml_path)
-    remote = _origin(target)
+    remote = read_origin(target)
     slot = folder / name
     previous = None
     if name in declared:
@@ -68,23 +65,16 @@ def _plan_link(folder: Path, name: str, given: Path) -> dict:
             link_action = "rebound"
         else:
             link_action = "created"
-        toml_text = _append_source(text, name, remote)
+        toml_text = append_source(text, name, remote)
     files = [(ATLAS_TOML, ("updated", toml_text))]
-    files.append((VSCODE_SETTINGS, plan_json_file(folder / VSCODE_SETTINGS, _add_scan_repository(name))))
-    files.append((CLAUDE_SETTINGS, plan_json_file(folder / CLAUDE_SETTINGS, _add_directory(str(target), previous))))
+    files.append((VSCODE_SETTINGS, plan_json_file(folder / VSCODE_SETTINGS, add_scan_repository(name))))
+    files.append((CLAUDE_SETTINGS, plan_json_file(folder / CLAUDE_SETTINGS, add_directory(str(target), previous))))
     return {"name": name, "target": target, "link": link_action, "files": files}
 
 
 def _check_name(name: str) -> None:
     if name in {".", ".."} or "/" in name or "\\" in name or name.startswith((".", "_")):
         raise ValueError(f"'{name}' is not a source name")
-
-
-def _append_source(text: str, name: str, remote: str | None) -> str:
-    body = text if text.endswith("\n") else text + "\n"
-    if not body.endswith("\n\n"):
-        body += "\n"
-    return body + _source_section(name, remote)
 
 
 def _rebind_source(text: str, name: str, remote: str | None) -> str:
@@ -97,7 +87,7 @@ def _rebind_source(text: str, name: str, remote: str | None) -> str:
         body_end += 1
     while body_end - 1 > start and lines[body_end - 1].strip() == "":
         body_end -= 1
-    return "".join(lines[:start]) + _source_section(name, remote) + "".join(lines[body_end:])
+    return "".join(lines[:start]) + render_source_section(name, remote) + "".join(lines[body_end:])
 
 
 def _header_name(line: str) -> str | None:
@@ -112,66 +102,3 @@ def _header_name(line: str) -> str | None:
     if len(key) >= 2 and key[0] == '"' and key[-1] == '"':
         key = key[1:-1]
     return key or None
-
-
-def _source_section(name: str, remote: str | None) -> str:
-    lines = [f"[sources.{_toml_key(name)}]"]
-    if remote is not None:
-        lines.append(f"remote = {quote_toml_string(remote)}")
-    return "\n".join(lines) + "\n"
-
-
-def _toml_key(name: str) -> str:
-    if _BARE_KEY.fullmatch(name):
-        return name
-    return quote_toml_string(name)
-
-
-def _origin(path: Path) -> str | None:
-    if not (path / ".git").exists():
-        return None
-    result = subprocess.run(
-        ["git", "-C", str(path), "remote", "get-url", "origin"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=False,
-    )
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
-
-
-def _add_scan_repository(name: str):
-    def complete(settings: dict) -> dict:
-        repositories = settings.setdefault("git.scanRepositories", [])
-        if name not in repositories:
-            repositories.append(name)
-        return settings
-
-    return complete
-
-
-def _add_directory(absolute: str, previous: Path | None = None):
-    def complete(settings: dict) -> dict:
-        permissions = settings.setdefault("permissions", {})
-        directories = permissions.setdefault("additionalDirectories", [])
-        stale = _previous_paths(previous)
-        if stale:
-            directories[:] = [item for item in directories if item not in stale]
-        if absolute not in directories:
-            directories.append(absolute)
-        return settings
-
-    return complete
-
-
-def _previous_paths(previous: Path | None) -> set[str]:
-    if previous is None:
-        return set()
-    stale = {str(previous)}
-    try:
-        stale.add(str(previous.resolve()))
-    except OSError:
-        pass
-    return stale

@@ -7,6 +7,7 @@ from string import Template
 ATLAS_TOML = "_settings/atlas.toml"
 CLAUDE_SETTINGS = ".claude/settings.local.json"
 VSCODE_SETTINGS = ".vscode/settings.json"
+GITIGNORE = ".gitignore"
 
 
 def read_atlas_file(path: Path) -> str:
@@ -37,6 +38,13 @@ def render_template(template: str, **values: str) -> str:
 def quote_toml_string(value: str) -> str:
     escaped = value.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
+
+
+def append_toml_section(text: str, section: str) -> str:
+    body = text if text.endswith("\n") else text + "\n"
+    if not body.endswith("\n\n"):
+        body += "\n"
+    return body + section
 
 
 def plan_json_file(target: Path, complete) -> tuple[str, str]:

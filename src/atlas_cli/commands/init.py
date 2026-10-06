@@ -5,11 +5,13 @@ from pathlib import Path
 from atlas_cli.atlasfiles import (
     ATLAS_TOML,
     CLAUDE_SETTINGS,
+    GITIGNORE,
     VSCODE_SETTINGS,
     plan_json_file,
     render_template,
     write_atlas_file,
 )
+from atlas_cli.settingscompletion import complete_claude_settings, complete_vscode_settings
 
 ATLAS_FILES = {
     "CLAUDE.md": "CLAUDE.md",
@@ -18,7 +20,6 @@ ATLAS_FILES = {
     "_archived/README.md": "archived.md",
     ATLAS_TOML: "atlas.toml",
 }
-GITIGNORE = ".gitignore"
 ATLAS_MARKERS = (ATLAS_TOML, "CLAUDE.md", "STATUS.md")
 
 
@@ -55,23 +56,10 @@ def _plan_base_set(folder: Path, today: date) -> dict[str, tuple[str, str | None
         path: ("created", render_template(template, name=folder.name, today=today.isoformat()))
         for path, template in ATLAS_FILES.items()
     }
-    plan[CLAUDE_SETTINGS] = plan_json_file(folder / CLAUDE_SETTINGS, _complete_claude_settings)
-    plan[VSCODE_SETTINGS] = plan_json_file(folder / VSCODE_SETTINGS, _complete_vscode_settings)
+    plan[CLAUDE_SETTINGS] = plan_json_file(folder / CLAUDE_SETTINGS, complete_claude_settings)
+    plan[VSCODE_SETTINGS] = plan_json_file(folder / VSCODE_SETTINGS, complete_vscode_settings)
     if (folder / GITIGNORE).exists():
         plan[GITIGNORE] = ("kept", None)
     else:
         plan[GITIGNORE] = ("created", render_template("gitignore"))
     return plan
-
-
-def _complete_claude_settings(settings: dict) -> dict:
-    permissions = settings.setdefault("permissions", {})
-    permissions.setdefault("allow", [])
-    permissions.setdefault("additionalDirectories", [])
-    return settings
-
-
-def _complete_vscode_settings(settings: dict) -> dict:
-    settings["git.autoRepositoryDetection"] = True
-    settings.setdefault("git.scanRepositories", [])
-    return settings
