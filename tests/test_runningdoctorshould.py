@@ -2,6 +2,8 @@ import shlex
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from atlas_cli.cli import main
 
 
@@ -19,6 +21,13 @@ def _source(folder: Path, *, origin: str | None = None) -> Path:
         subprocess.run(["git", "-C", str(folder), "init", "-q"], check=True)
         subprocess.run(["git", "-C", str(folder), "remote", "add", "origin", origin], check=True)
     return folder
+
+
+def _place_rule_file(source: Path, rule_file: str) -> None:
+    if rule_file.endswith("/"):
+        (source / rule_file.removesuffix("/")).mkdir()
+        return
+    (source / rule_file).write_text("rules\n", encoding="utf-8")
 
 
 def _tree(folder: Path) -> dict[str, tuple]:
@@ -175,6 +184,66 @@ def test_refuse_when_the_folder_is_not_an_atlas(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "not an Atlas" in out
     assert "nothing was changed" in out
+
+
+@pytest.mark.parametrize(
+    "rule_file",
+    ["CLAUDE.md", "CLAUDE.local.md", ".claude/", "AGENTS.md", ".cursorrules"],
+)
+def test_flag_one_rule_file_at_the_source_top_level(tmp_path, monkeypatch, capsys, rule_file):
+    _atlas(tmp_path, monkeypatch)
+    source = _source(tmp_path / "log-daemon")
+    assert main(["link", "log-daemon", str(source)]) == 0
+    _place_rule_file(source, rule_file)
+    capsys.readouterr()
+
+    assert main(["doctor"]) == 1
+
+    assert capsys.readouterr().out == f"ok log-daemon\nrules log-daemon: {rule_file}\n"
+
+
+def test_list_every_rule_file_in_order(tmp_path, monkeypatch, capsys):
+    _atlas(tmp_path, monkeypatch)
+    source = _source(tmp_path / "log-daemon")
+    assert main(["link", "log-daemon", str(source)]) == 0
+    for rule_file in (".cursorrules", "AGENTS.md", ".claude/", "CLAUDE.local.md", "CLAUDE.md"):
+        _place_rule_file(source, rule_file)
+    capsys.readouterr()
+
+    assert main(["doctor"]) == 1
+
+    assert capsys.readouterr().out == (
+        "ok log-daemon\n"
+        "rules log-daemon: CLAUDE.md, CLAUDE.local.md, .claude/, AGENTS.md, .cursorrules\n"
+    )
+
+
+def test_leave_a_clean_source_out_of_the_rules_report(tmp_path, monkeypatch, capsys):
+    _atlas(tmp_path, monkeypatch)
+    source = _source(tmp_path / "log-daemon")
+    (source / "README.md").write_text("notes\n", encoding="utf-8")
+    assert main(["link", "log-daemon", str(source)]) == 0
+    capsys.readouterr()
+
+    assert main(["doctor"]) == 0
+
+    output = capsys.readouterr().out
+    assert output == "ok log-daemon\n"
+    assert "rules " not in output
+
+
+def test_ignore_a_rule_file_below_the_source_top_level(tmp_path, monkeypatch, capsys):
+    _atlas(tmp_path, monkeypatch)
+    source = _source(tmp_path / "log-daemon")
+    nested = source / "sub"
+    nested.mkdir()
+    (nested / "CLAUDE.md").write_text("nested\n", encoding="utf-8")
+    assert main(["link", "log-daemon", str(source)]) == 0
+    capsys.readouterr()
+
+    assert main(["doctor"]) == 0
+
+    assert capsys.readouterr().out == "ok log-daemon\n"
 
 
 def test_refuse_unreadable_toml_and_change_nothing(tmp_path, monkeypatch, capsys):
