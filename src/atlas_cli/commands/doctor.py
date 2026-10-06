@@ -2,7 +2,7 @@ import shlex
 from pathlib import Path
 
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_toml
-from atlas_cli.sourcestate import judge_source
+from atlas_cli.sourcestate import find_rule_files, judge_source
 
 
 def register(subparsers) -> None:
@@ -18,7 +18,7 @@ def run(args) -> int:
         return 1
     for line in lines:
         print(line)
-    if any(line.startswith(("missing ", "broken ", "undeclared ")) for line in lines):
+    if any(line.startswith(("missing ", "broken ", "undeclared ", "rules ")) for line in lines):
         return 1
     return 0
 
@@ -45,7 +45,11 @@ def _report(folder: Path) -> list[str]:
 def _declared_source(folder: Path, name: str, remote: str | None) -> list[str]:
     state = judge_source(folder, name)
     if state == "ok":
-        return [f"ok {name}"]
+        lines = [f"ok {name}"]
+        rule_files = find_rule_files(folder / name)
+        if rule_files:
+            lines.append(f"rules {name}: {', '.join(rule_files)}")
+        return lines
     if state == "broken":
         return [f"broken {name} -> {(folder / name).readlink()}"]
     lines = [f"missing {name}"]
