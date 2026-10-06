@@ -1,4 +1,5 @@
 .venv/
+.cody-venv/
 __pycache__/
 *.pyc
 dist/

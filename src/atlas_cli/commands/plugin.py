@@ -5,15 +5,12 @@ from pathlib import Path
 
 from atlas_cli.atlasfiles import (
     ATLAS_TOML,
-    quote_toml_string,
     read_atlas_file,
     render_template,
     write_atlas_file,
 )
+from atlas_cli.plugindeclaration import KNOWN_PLUGINS, append_plugin
 
-KNOWN_PLUGINS = {
-    "coding-rules": ("CODING_RULES_CANDIDATES.md", "CODING_RULES_DEVIATIONS.md"),
-}
 _SOURCE = re.compile(r"mcp:[A-Za-z0-9_.-]+|file:[^/\\].*\.md")
 
 
@@ -60,7 +57,4 @@ def _plan_declaration(folder: Path, name: str, source: str) -> str:
         raise ValueError(f"Cannot read {ATLAS_TOML} ({error})") from error
     if name in plugins:
         raise ValueError(f"{name} is already declared in {ATLAS_TOML}")
-    body = text if text.endswith("\n") else text + "\n"
-    if not body.endswith("\n\n"):
-        body += "\n"
-    return body + f"[plugins.{name}]\nsource = {quote_toml_string(source)}\n"
+    return append_plugin(text, name, source)
