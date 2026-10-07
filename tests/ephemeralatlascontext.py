@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import unicodedata
 from pathlib import Path
 
 _GIT_IDENTITY = {
@@ -13,9 +14,16 @@ _GIT_IDENTITY = {
 
 
 class EphemeralAtlasContext:
-    def __init__(self, git_sources: list[str], plain_sources: list[str] | None = None):
+    def __init__(
+        self,
+        git_sources: list[str],
+        plain_sources: list[str] | None = None,
+        case_insensitive: bool = False,
+    ):
         self._git_sources = list(git_sources)
         self._plain_sources = list(plain_sources or [])
+        self._case_insensitive = case_insensitive
+        self._saved_os: dict[str, object] = {}
         self.root: Path | None = None
         self.atlas: Path | None = None
         self._sources: dict[str, Path] = {}
@@ -27,6 +35,8 @@ class EphemeralAtlasContext:
         try:
             self._set_identity()
             self._build()
+            if self._case_insensitive:
+                self._fold_case()
         except Exception:
             self._cleanup()
             raise
@@ -81,7 +91,20 @@ class EphemeralAtlasContext:
                 os.environ[key] = previous
         self._saved_env.clear()
 
+    def _fold_case(self) -> None:
+        folders = {self.atlas, self.atlas.resolve()}
+        for call in ("stat", "lstat", "readlink", "unlink"):
+            original = getattr(os, call)
+            self._saved_os[call] = original
+            setattr(os, call, _folding(original, folders))
+
+    def _restore_os(self) -> None:
+        for call, original in self._saved_os.items():
+            setattr(os, call, original)
+        self._saved_os.clear()
+
     def _cleanup(self) -> None:
+        self._restore_os()
         self._restore_identity()
         if self.root is None or not self.root.exists():
             return
@@ -90,6 +113,25 @@ class EphemeralAtlasContext:
             os.chdir(self.root.parent)
         shutil.rmtree(self.root)
         self.root = None
+
+
+def _folding(call, folders: set[Path]):
+    def folded(path, *args, **kwargs):
+        if isinstance(path, (str, os.PathLike)):
+            wanted = Path(os.fspath(path))
+            if wanted.parent in folders:
+                names = os.listdir(wanted.parent)
+                if wanted.name not in names:
+                    twin = next((name for name in names if _fold(name) == _fold(wanted.name)), None)
+                    if twin is not None:
+                        path = wanted.parent / twin
+        return call(path, *args, **kwargs)
+
+    return folded
+
+
+def _fold(name: str) -> str:
+    return unicodedata.normalize("NFC", name).casefold()
 
 
 def _git_output(args: list[str], cwd: Path) -> str:
