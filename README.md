@@ -76,7 +76,8 @@ on Cursor's side is the MCP server behind an Atlas's `coding-rules` plugin, if i
 - **Join a shared Atlas:** clone it, run `atlas doctor` inside it and follow what it says.
 - **Older Atlas:** `atlas migrate` shows the plan to bring it to the current model;
   `atlas migrate --apply` applies it.
-- **Day to day:** `atlas status` says where things stand; `/atlas-sync` is the checkpoint.
+- **Day to day:** `atlas status` says where things stand; `/atlas-sync` is the checkpoint;
+  `atlas unlink <name>` drops a source the Atlas no longer uses.
 
 How an Atlas works — its files, SPECs, cadence and sharing — is the method:
 [creating an Atlas](https://atlas.paranoid.software/method/06-bootstrap) and

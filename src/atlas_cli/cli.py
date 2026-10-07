@@ -2,7 +2,7 @@ import argparse
 import sys
 
 from atlas_cli import __version__
-from atlas_cli.commands import doctor, init, link, migrate, plugin, setup, status
+from atlas_cli.commands import doctor, init, link, migrate, plugin, setup, status, unlink
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -14,6 +14,7 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", metavar="<command>")
     init.register(subparsers)
     link.register(subparsers)
+    unlink.register(subparsers)
     doctor.register(subparsers)
     plugin.register(subparsers)
     setup.register(subparsers)
