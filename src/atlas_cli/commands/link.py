@@ -10,7 +10,13 @@ from atlas_cli.atlasfiles import (
     write_atlas_file,
 )
 from atlas_cli.settingscompletion import add_directory, add_scan_repository
-from atlas_cli.sourcedeclaration import append_source, read_origin, render_source_section
+from atlas_cli.sourcedeclaration import (
+    append_source,
+    check_source_name,
+    read_origin,
+    render_source_section,
+    source_section_span,
+)
 
 
 def register(subparsers) -> None:
@@ -39,7 +45,7 @@ def run(args: argparse.Namespace) -> int:
 
 
 def _plan_link(folder: Path, name: str, given: Path) -> dict:
-    _check_name(name)
+    check_source_name(name)
     toml_path = folder / ATLAS_TOML
     if not toml_path.is_file():
         raise ValueError(f"This folder is not an Atlas (no {ATLAS_TOML})")
@@ -72,33 +78,10 @@ def _plan_link(folder: Path, name: str, given: Path) -> dict:
     return {"name": name, "target": target, "link": link_action, "files": files}
 
 
-def _check_name(name: str) -> None:
-    if name in {".", ".."} or "/" in name or "\\" in name or name.startswith((".", "_")):
-        raise ValueError(f"'{name}' is not a source name")
-
-
 def _rebind_source(text: str, name: str, remote: str | None) -> str:
     lines = text.splitlines(keepends=True)
-    start = next((index for index, line in enumerate(lines) if _header_name(line) == name), None)
-    if start is None:
+    span = source_section_span(lines, name)
+    if span is None:
         raise ValueError(f"Cannot update {name} in {ATLAS_TOML}")
-    body_end = start + 1
-    while body_end < len(lines) and not lines[body_end].lstrip().startswith("["):
-        body_end += 1
-    while body_end - 1 > start and lines[body_end - 1].strip() == "":
-        body_end -= 1
-    return "".join(lines[:start]) + render_source_section(name, remote) + "".join(lines[body_end:])
-
-
-def _header_name(line: str) -> str | None:
-    stripped = line.strip()
-    if len(stripped) < 3 or not stripped.startswith("[") or not stripped.endswith("]"):
-        return None
-    inner = stripped[1:-1].strip()
-    marker = "sources."
-    if not inner.startswith(marker):
-        return None
-    key = inner[len(marker):].strip()
-    if len(key) >= 2 and key[0] == '"' and key[-1] == '"':
-        key = key[1:-1]
-    return key or None
+    start, end = span
+    return "".join(lines[:start]) + render_source_section(name, remote) + "".join(lines[end:])
