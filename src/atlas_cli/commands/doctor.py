@@ -2,7 +2,7 @@ import shlex
 from pathlib import Path
 
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_toml
-from atlas_cli.sourcestate import find_rule_files, judge_source
+from atlas_cli.sourcestate import atlas_entries, case_twin, find_rule_files, judge_source
 
 
 def register(subparsers) -> None:
@@ -28,12 +28,13 @@ def _report(folder: Path) -> list[str]:
     if not toml_path.is_file():
         raise ValueError(f"This folder is not an Atlas (no {ATLAS_TOML})")
     _, declared = read_atlas_toml(toml_path)
+    entries = atlas_entries(folder)
     lines: list[str] = []
     for name, table in declared.items():
-        lines.extend(_declared_source(folder, str(name), _remote(table)))
+        lines.extend(_declared_source(folder, entries, str(name), _remote(table)))
     known = {str(name) for name in declared}
     undeclared = sorted(
-        (entry for entry in folder.iterdir() if entry.is_symlink() and entry.name not in known),
+        (entry for entry in entries.values() if entry.is_symlink() and entry.name not in known),
         key=lambda entry: entry.name,
     )
     for entry in undeclared:
@@ -42,7 +43,7 @@ def _report(folder: Path) -> list[str]:
     return lines
 
 
-def _declared_source(folder: Path, name: str, remote: str | None) -> list[str]:
+def _declared_source(folder: Path, entries: dict[str, Path], name: str, remote: str | None) -> list[str]:
     state = judge_source(folder, name)
     if state == "ok":
         lines = [f"ok {name}"]
@@ -53,6 +54,9 @@ def _declared_source(folder: Path, name: str, remote: str | None) -> list[str]:
     if state == "broken":
         return [f"broken {name} -> {(folder / name).readlink()}"]
     lines = [f"missing {name}"]
+    twin = case_twin(entries, name)
+    if twin is not None and entries[twin].is_symlink():
+        lines.append(f"atlas unlink {shlex.quote(twin)}")
     if remote is None:
         lines.append(f"atlas link {shlex.quote(name)} <path>")
         return lines

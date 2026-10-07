@@ -14,6 +14,7 @@ from atlas_cli.atlasfiles import (
 )
 from atlas_cli.settingscompletion import remove_directories, remove_scan_repository
 from atlas_cli.sourcedeclaration import check_source_name, source_section_span
+from atlas_cli.sourcestate import atlas_entries
 
 
 def register(subparsers) -> None:
@@ -45,7 +46,7 @@ def _plan_unlink(folder: Path, name: str) -> dict:
     if not toml_path.is_file():
         raise ValueError(f"This folder is not an Atlas (no {ATLAS_TOML})")
     text, declared = read_atlas_toml(toml_path)
-    entries = {entry.name: entry for entry in folder.iterdir()}
+    entries = atlas_entries(folder)
     slot = entries.get(name)
     if slot is not None and not slot.is_symlink():
         raise ValueError(f"{name} in this Atlas is not a symlink")
