@@ -3,7 +3,7 @@ import unicodedata
 from pathlib import Path
 
 from atlas_cli.cli import main
-from tests.ephemeralatlascontext import EphemeralAtlasContext
+from tests.ephemeralatlascontext import EphemeralAtlasContext, orient_sources
 
 _TRACKED = (
     "_settings/atlas.toml",
@@ -122,6 +122,7 @@ def test_doctor_judges_a_declared_source_by_its_exact_name(monkeypatch, capsys):
     with EphemeralAtlasContext(git_sources=[], plain_sources=["src1"], case_insensitive=True) as context:
         atlas = _init(context, monkeypatch)
         assert main(["link", "src1", str(context.source("src1"))]) == 0
+        orient_sources(atlas, "src1")
         (atlas / "src1").unlink()
         (atlas / "SRC1").symlink_to(context.source("src1"), target_is_directory=True)
         capsys.readouterr()

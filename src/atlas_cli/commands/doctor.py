@@ -1,8 +1,16 @@
 import shlex
 from pathlib import Path
 
-from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_toml
-from atlas_cli.sourcestate import atlas_entries, case_twin, find_rule_files, judge_source
+from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_file, read_atlas_toml
+from atlas_cli.sourcestate import (
+    CLAUDE_MD,
+    atlas_entries,
+    case_twin,
+    find_placeholders,
+    find_rule_files,
+    judge_source,
+    orientation_blocks,
+)
 
 
 def register(subparsers) -> None:
@@ -18,7 +26,8 @@ def run(args) -> int:
         return 1
     for line in lines:
         print(line)
-    if any(line.startswith(("missing ", "broken ", "undeclared ", "rules ")) for line in lines):
+    findings = ("missing ", "broken ", "undeclared ", "rules ", "unoriented ", "placeholder ")
+    if any(line.startswith(findings) for line in lines):
         return 1
     return 0
 
@@ -29,9 +38,14 @@ def _report(folder: Path) -> list[str]:
         raise ValueError(f"This folder is not an Atlas (no {ATLAS_TOML})")
     _, declared = read_atlas_toml(toml_path)
     entries = atlas_entries(folder)
+    blocks = _orientation_blocks(folder)
     lines: list[str] = []
     for name, table in declared.items():
         lines.extend(_declared_source(folder, entries, str(name), _remote(table)))
+        if blocks is not None:
+            lines.extend(_orientation(blocks, str(name)))
+    if blocks is None:
+        lines.append(f"missing {CLAUDE_MD}")
     known = {str(name) for name in declared}
     undeclared = sorted(
         (entry for entry in entries.values() if entry.is_symlink() and entry.name not in known),
@@ -64,6 +78,26 @@ def _declared_source(folder: Path, entries: dict[str, Path], name: str, remote: 
     lines.append(f"git clone {shlex.quote(remote)} {destination}")
     lines.append(f"atlas link {shlex.quote(name)} {destination}")
     return lines
+
+
+def _orientation_blocks(folder: Path) -> dict[str, str] | None:
+    path = folder / CLAUDE_MD
+    if not path.is_file():
+        return None
+    try:
+        return orientation_blocks(read_atlas_file(path))
+    except OSError as error:
+        raise ValueError(f"Cannot read {CLAUDE_MD} ({error.strerror})") from error
+
+
+def _orientation(blocks: dict[str, str], name: str) -> list[str]:
+    block = blocks.get(name)
+    if block is None:
+        return [f"unoriented {name}"]
+    placeholders = find_placeholders(block)
+    if placeholders:
+        return [f"placeholder {name}: {', '.join(placeholders)}"]
+    return []
 
 
 def _remote(table: object) -> str | None:

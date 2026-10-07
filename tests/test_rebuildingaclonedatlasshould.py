@@ -5,7 +5,7 @@ from pathlib import Path
 
 from atlas_cli.cli import main
 
-from tests.ephemeralatlascontext import EphemeralAtlasContext
+from tests.ephemeralatlascontext import EphemeralAtlasContext, orient_sources
 
 
 def test_rebuild_a_cloned_atlas_with_the_links_doctor_suggests(monkeypatch, capsys):
@@ -14,6 +14,7 @@ def test_rebuild_a_cloned_atlas_with_the_links_doctor_suggests(monkeypatch, caps
         assert main(["init"]) == 0
         assert main(["link", "log-daemon", str(world.source("log-daemon"))]) == 0
         assert main(["link", "atlas-cli", str(world.source("atlas-cli"))]) == 0
+        orient_sources(world.atlas, "log-daemon", "atlas-cli")
         capsys.readouterr()
 
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=world.atlas, check=True)

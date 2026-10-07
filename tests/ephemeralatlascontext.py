@@ -115,6 +115,36 @@ class EphemeralAtlasContext:
         self.root = None
 
 
+def orient_sources(atlas: Path, *names: str) -> None:
+    """Give each source a filled orientation block in CLAUDE.md §1."""
+    path = atlas / "CLAUDE.md"
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    end = _end_of_section_one(lines)
+    if end is None:
+        lines.extend(["", "## 1. What lives here"])
+        end = len(lines)
+    blocks: list[str] = []
+    for name in names:
+        blocks.extend(
+            [
+                "",
+                f"### {name} — tooling",
+                f"- **Contributes:** {name} does its part.",
+                "- **Stack:** Python.",
+                "- **Cadence:** tagged releases.",
+            ]
+        )
+    lines[end:end] = blocks
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def _end_of_section_one(lines: list[str]) -> int | None:
+    start = next((i for i, line in enumerate(lines) if line.startswith("## 1.")), None)
+    if start is None:
+        return None
+    return next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+
+
 def _folding(call, folders: set[Path]):
     def folded(path, *args, **kwargs):
         if isinstance(path, (str, os.PathLike)):
