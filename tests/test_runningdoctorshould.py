@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from atlas_cli.cli import main
+from tests.ephemeralatlascontext import orient_sources
 
 
 def _atlas(tmp_path: Path, monkeypatch) -> Path:
@@ -45,6 +46,7 @@ def test_report_an_ok_source(tmp_path, monkeypatch, capsys):
     atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "log-daemon", origin="git@github.com:me/log-daemon.git")
     assert main(["link", "log-daemon", str(source)]) == 0
+    orient_sources(atlas, "log-daemon")
     before = _tree(atlas)
     capsys.readouterr()
 
@@ -62,6 +64,7 @@ def test_suggest_clone_and_link_when_a_source_is_missing(tmp_path, monkeypatch, 
     atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "log-daemon", origin="git@github.com:me/log-daemon.git")
     assert main(["link", "log-daemon", str(source)]) == 0
+    orient_sources(atlas, "log-daemon")
     (atlas / "log-daemon").unlink()
     before = _tree(atlas)
     capsys.readouterr()
@@ -80,6 +83,7 @@ def test_suggest_only_link_when_a_missing_source_has_no_remote(tmp_path, monkeyp
     atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "notes")
     assert main(["link", "notes", str(source)]) == 0
+    orient_sources(atlas, "notes")
     (atlas / "notes").unlink()
     capsys.readouterr()
 
@@ -92,6 +96,7 @@ def test_treat_a_real_file_as_missing(tmp_path, monkeypatch, capsys):
     atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "notes")
     assert main(["link", "notes", str(source)]) == 0
+    orient_sources(atlas, "notes")
     (atlas / "notes").unlink()
     (atlas / "notes").write_text("keep me", encoding="utf-8")
     capsys.readouterr()
@@ -106,6 +111,7 @@ def test_report_a_dangling_symlink_as_broken(tmp_path, monkeypatch, capsys):
     atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "log-daemon", origin="git@github.com:me/log-daemon.git")
     assert main(["link", "log-daemon", str(source)]) == 0
+    orient_sources(atlas, "log-daemon")
     (atlas / "log-daemon").unlink()
     (atlas / "log-daemon").symlink_to(tmp_path / "gone")
     target = (atlas / "log-daemon").readlink()
@@ -140,6 +146,7 @@ def test_list_findings_in_declaration_order_then_undeclared_names(tmp_path, monk
     assert main(["link", "atlas", str(atlas_source)]) == 0
     assert main(["link", "log-daemon", str(missing)]) == 0
     assert main(["link", "notes", str(broken)]) == 0
+    orient_sources(atlas, "atlas", "log-daemon", "notes")
     (atlas / "log-daemon").unlink()
     (atlas / "notes").unlink()
     (atlas / "notes").symlink_to(tmp_path / "gone")
@@ -191,9 +198,10 @@ def test_refuse_when_the_folder_is_not_an_atlas(tmp_path, monkeypatch, capsys):
     ["CLAUDE.md", "CLAUDE.local.md", ".claude/", "AGENTS.md", ".cursorrules"],
 )
 def test_flag_one_rule_file_at_the_source_top_level(tmp_path, monkeypatch, capsys, rule_file):
-    _atlas(tmp_path, monkeypatch)
+    atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "log-daemon")
     assert main(["link", "log-daemon", str(source)]) == 0
+    orient_sources(atlas, "log-daemon")
     _place_rule_file(source, rule_file)
     capsys.readouterr()
 
@@ -203,9 +211,10 @@ def test_flag_one_rule_file_at_the_source_top_level(tmp_path, monkeypatch, capsy
 
 
 def test_list_every_rule_file_in_order(tmp_path, monkeypatch, capsys):
-    _atlas(tmp_path, monkeypatch)
+    atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "log-daemon")
     assert main(["link", "log-daemon", str(source)]) == 0
+    orient_sources(atlas, "log-daemon")
     for rule_file in (".cursorrules", "AGENTS.md", ".claude/", "CLAUDE.local.md", "CLAUDE.md"):
         _place_rule_file(source, rule_file)
     capsys.readouterr()
@@ -219,10 +228,11 @@ def test_list_every_rule_file_in_order(tmp_path, monkeypatch, capsys):
 
 
 def test_leave_a_clean_source_out_of_the_rules_report(tmp_path, monkeypatch, capsys):
-    _atlas(tmp_path, monkeypatch)
+    atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "log-daemon")
     (source / "README.md").write_text("notes\n", encoding="utf-8")
     assert main(["link", "log-daemon", str(source)]) == 0
+    orient_sources(atlas, "log-daemon")
     capsys.readouterr()
 
     assert main(["doctor"]) == 0
@@ -233,12 +243,13 @@ def test_leave_a_clean_source_out_of_the_rules_report(tmp_path, monkeypatch, cap
 
 
 def test_ignore_a_rule_file_below_the_source_top_level(tmp_path, monkeypatch, capsys):
-    _atlas(tmp_path, monkeypatch)
+    atlas = _atlas(tmp_path, monkeypatch)
     source = _source(tmp_path / "log-daemon")
     nested = source / "sub"
     nested.mkdir()
     (nested / "CLAUDE.md").write_text("nested\n", encoding="utf-8")
     assert main(["link", "log-daemon", str(source)]) == 0
+    orient_sources(atlas, "log-daemon")
     capsys.readouterr()
 
     assert main(["doctor"]) == 0
