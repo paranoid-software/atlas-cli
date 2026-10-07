@@ -20,9 +20,11 @@ def write_atlas_file(path: Path, content: str) -> None:
 
 
 def read_atlas_toml(path: Path) -> tuple[str, dict]:
-    text = read_atlas_file(path)
     try:
+        text = read_atlas_file(path)
         declared = tomllib.loads(text).get("sources", {})
+    except OSError as error:
+        raise ValueError(f"Cannot read {ATLAS_TOML} ({error.strerror})") from error
     except tomllib.TOMLDecodeError as error:
         raise ValueError(f"Cannot read {ATLAS_TOML} ({error})") from error
     if not isinstance(declared, dict):
@@ -50,10 +52,15 @@ def append_toml_section(text: str, section: str) -> str:
 def plan_json_file(target: Path, complete) -> tuple[str, str]:
     if not target.exists():
         return "created", _dump_json(complete({}))
+    where = f"{target.name} in {target.parent.name}/"
     try:
         settings = json.loads(read_atlas_file(target))
     except json.JSONDecodeError as error:
-        raise ValueError(f"Cannot read {target.name} in {target.parent.name}/ ({error.msg})") from error
+        raise ValueError(f"Cannot read {where} ({error.msg})") from error
+    except OSError as error:
+        raise ValueError(f"Cannot read {where} ({error.strerror})") from error
+    if not isinstance(settings, dict):
+        raise ValueError(f"Cannot read {where} (not a JSON object)")
     return "updated", _dump_json(complete(settings))
 
 

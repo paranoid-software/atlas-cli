@@ -40,7 +40,7 @@ Returns the Atlas framework:
 Two user-global slash commands operate on an Atlas; both are thin wrappers that fetch and follow the canonical recipe/model in the Atlas framework (`atlas-fetch.sh`):
 
 - **`/atlas-init`** — create an Atlas with the CLI (`atlas init`, or `atlas migrate` for an older one), add its sources with `atlas link`, then write their orientation blocks with the human.
-- **`/atlas-sync`** — checkpoint an existing Atlas: reconcile its sources with `atlas doctor` / `atlas link`, refresh `STATUS.md` starting from `atlas status` (Active blocks Done / Next / Blocked; closed SPECs to Recently closed), lint SPECs for contamination, and update `CLAUDE.md` only if a standing fact changed.
+- **`/atlas-sync`** — checkpoint an existing Atlas: reconcile its sources with `atlas doctor` / `atlas link` (and `atlas unlink`, with the human's approval, for a source that is gone), refresh `STATUS.md` starting from `atlas status` (Active blocks Done / Next / Blocked; closed SPECs to Recently closed), lint SPECs for contamination, and update `CLAUDE.md` only if a standing fact changed.
 
 Memory mechanism: a `SessionStart` hook (`session-orient.sh`) injects `STATUS.md` at start; a `Stop` hook (`atlas-sync-reminder.sh`) nudges the agent to offer `/atlas-sync` when `STATUS.md` goes stale (throttled). There is no automatic write — checkpointing is deliberate.
 

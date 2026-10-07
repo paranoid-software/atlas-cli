@@ -38,6 +38,27 @@ def add_directory(absolute: str, previous: Path | None = None):
     return complete
 
 
+def remove_scan_repository(name: str):
+    def complete(settings: dict) -> dict:
+        repositories = settings.get("git.scanRepositories")
+        if isinstance(repositories, list):
+            repositories[:] = [item for item in repositories if item != name]
+        return settings
+
+    return complete
+
+
+def remove_directories(stale: set[str]):
+    def complete(settings: dict) -> dict:
+        permissions = settings.get("permissions")
+        directories = permissions.get("additionalDirectories") if isinstance(permissions, dict) else None
+        if stale and isinstance(directories, list):
+            directories[:] = [item for item in directories if item not in stale]
+        return settings
+
+    return complete
+
+
 def _previous_paths(previous: Path | None) -> set[str]:
     if previous is None:
         return set()
