@@ -4,7 +4,7 @@ import tomllib
 from pathlib import Path
 
 from atlas_cli.cli import main
-from tests.ephemeralatlascontext import EphemeralAtlasContext
+from tests.ephemeralatlascontext import EphemeralAtlasContext, orient_sources
 
 
 def _build_v0_atlas(context: EphemeralAtlasContext, monkeypatch, sources: list[str]) -> Path:
@@ -75,6 +75,7 @@ def test_declare_every_symlink_as_a_source_with_its_remote_when_it_has_one(monke
             f"declared log-daemon ({context.origin('log-daemon')})",
             "declared notes (not git)",
         ]
+        orient_sources(atlas, "log-daemon", "notes")
         assert main(["doctor"]) == 0
 
 
