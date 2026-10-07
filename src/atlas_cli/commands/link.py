@@ -57,7 +57,7 @@ def _plan_link(folder: Path, name: str, given: Path) -> dict:
     entries = atlas_entries(folder)
     twin = case_twin([*declared, *entries], name)
     if twin is not None:
-        raise ValueError(f"{name} differs only in case from {twin} in this Atlas")
+        raise ValueError(f"{name} and {twin} are the same name on a case-insensitive disk")
     remote = read_origin(target)
     slot = entries.get(name)
     if slot is not None and not slot.is_symlink():

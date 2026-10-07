@@ -40,7 +40,7 @@ def test_refuse_a_name_that_differs_only_in_case_from_a_linked_source(monkeypatc
         assert _snapshot(atlas) == before
         assert sorted(entry.name for entry in atlas.iterdir() if entry.is_symlink()) == ["src1"]
         assert (atlas / "src1").readlink() == context.source("src1").resolve()
-        assert "SRC1 differs only in case from src1" in out
+        assert "SRC1 and src1 are the same name on a case-insensitive disk" in out
         assert "nothing was changed" in out
 
 
@@ -56,7 +56,7 @@ def test_refuse_a_name_that_differs_only_in_case_from_a_declared_source(monkeypa
         assert code == 1
         assert _snapshot(atlas) == before
         assert not any(entry.is_symlink() for entry in atlas.iterdir())
-        assert "Src1 differs only in case from src1" in out
+        assert "Src1 and src1 are the same name on a case-insensitive disk" in out
 
 
 def test_refuse_a_name_that_differs_only_in_case_from_an_undeclared_symlink(monkeypatch, capsys):
@@ -70,7 +70,7 @@ def test_refuse_a_name_that_differs_only_in_case_from_an_undeclared_symlink(monk
         assert code == 1
         assert _snapshot(atlas) == before
         assert (atlas / "src1").readlink() == context.source("src1")
-        assert "SRC1 differs only in case from src1" in out
+        assert "SRC1 and src1 are the same name on a case-insensitive disk" in out
 
 
 def test_refuse_a_name_that_differs_only_in_unicode_form(monkeypatch, capsys):
@@ -86,7 +86,7 @@ def test_refuse_a_name_that_differs_only_in_unicode_form(monkeypatch, capsys):
         assert code == 1
         assert _snapshot(atlas) == before
         assert (atlas / composed).readlink() == context.source("src1").resolve()
-        assert "differs only in case" in out
+        assert f"{decomposed} and {composed} are the same name on a case-insensitive disk" in out
         assert "nothing was changed" in out
 
 
@@ -101,7 +101,7 @@ def test_refuse_a_name_that_differs_only_in_case_from_an_entry(monkeypatch, caps
         assert code == 1
         assert _snapshot(atlas) == before
         assert (atlas / "Notes").is_dir() and not (atlas / "Notes").is_symlink()
-        assert "notes differs only in case from Notes" in out
+        assert "notes and Notes are the same name on a case-insensitive disk" in out
 
 
 def test_keep_rebinding_a_source_by_its_exact_name(monkeypatch, capsys):
