@@ -18,10 +18,12 @@ class EphemeralAtlasContext:
         self,
         git_sources: list[str],
         plain_sources: list[str] | None = None,
+        local_git_sources: list[str] | None = None,
         case_insensitive: bool = False,
     ):
         self._git_sources = list(git_sources)
         self._plain_sources = list(plain_sources or [])
+        self._local_git_sources = list(local_git_sources or [])
         self._case_insensitive = case_insensitive
         self._saved_os: dict[str, object] = {}
         self.root: Path | None = None
@@ -65,6 +67,13 @@ class EphemeralAtlasContext:
             folder = self.root / name
             folder.mkdir()
             (folder / "README").write_text(f"{name}\n", encoding="utf-8")
+            self._sources[name] = folder
+        for name in self._local_git_sources:
+            folder = self.root / name
+            subprocess.run(["git", "init", "-q", "-b", "main", str(folder)], check=True)
+            (folder / "README").write_text(f"{name}\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(folder), "add", "README"], check=True)
+            subprocess.run(["git", "-C", str(folder), "commit", "-q", "-m", "Start"], check=True)
             self._sources[name] = folder
         self.atlas = self.root / "acme"
         self.atlas.mkdir()
