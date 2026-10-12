@@ -19,11 +19,13 @@ class EphemeralAtlasContext:
         git_sources: list[str],
         plain_sources: list[str] | None = None,
         local_git_sources: list[str] | None = None,
+        origins: dict[str, str] | None = None,
         case_insensitive: bool = False,
     ):
         self._git_sources = list(git_sources)
         self._plain_sources = list(plain_sources or [])
         self._local_git_sources = list(local_git_sources or [])
+        self._origin_overrides = dict(origins or {})
         self._case_insensitive = case_insensitive
         self._saved_os: dict[str, object] = {}
         self.root: Path | None = None
@@ -61,6 +63,9 @@ class EphemeralAtlasContext:
             self._seed_bare(bare, name)
             checkout = self.root / name
             subprocess.run(["git", "clone", "-q", str(bare), str(checkout)], check=True)
+            if name in self._origin_overrides:
+                url = self._origin_overrides[name]
+                subprocess.run(["git", "-C", str(checkout), "remote", "set-url", "origin", url], check=True)
             self._sources[name] = checkout
             self._origins[name] = _git_output(["remote", "get-url", "origin"], checkout)
         for name in self._plain_sources:
