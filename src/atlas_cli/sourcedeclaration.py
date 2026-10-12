@@ -55,7 +55,36 @@ def read_origin(path: Path) -> str | None:
     )
     if result.returncode != 0:
         return None
-    return result.stdout.strip() or None
+    origin = result.stdout.strip()
+    return strip_credentials(origin) if origin else None
+
+
+def strip_credentials(url: str) -> str:
+    """Drop the userinfo of an http(s) URL: https://me:tok@host/x -> https://host/x.
+
+    Only http(s) carries tokens there; ssh:// and scp-like origins keep their user, which is
+    the protocol (git@github.com), not a secret.
+    """
+    return _rewrite_userinfo(url, "")
+
+
+def has_credentials(url: str) -> bool:
+    return strip_credentials(url) != url
+
+
+def redact_credentials(url: str) -> str:
+    return _rewrite_userinfo(url, "…@")
+
+
+def _rewrite_userinfo(url: str, replacement: str) -> str:
+    scheme, separator, rest = url.partition("://")
+    if not separator or scheme.lower() not in {"http", "https"}:
+        return url
+    authority = re.match(r"[^/?#]*", rest).group()
+    host_start = authority.rfind("@") + 1
+    if host_start == 0:
+        return url
+    return f"{scheme}://{replacement}{authority[host_start:]}{rest[len(authority):]}"
 
 
 def _toml_key(name: str) -> str:

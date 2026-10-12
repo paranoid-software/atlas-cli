@@ -2,6 +2,7 @@ import shlex
 from pathlib import Path
 
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_file, read_atlas_toml
+from atlas_cli.sourcedeclaration import has_credentials, redact_credentials, strip_credentials
 from atlas_cli.sourcestate import (
     CLAUDE_MD,
     atlas_entries,
@@ -26,7 +27,7 @@ def run(args) -> int:
         return 1
     for line in lines:
         print(line)
-    findings = ("missing ", "broken ", "undeclared ", "rules ", "unoriented ", "placeholder ")
+    findings = ("missing ", "broken ", "undeclared ", "rules ", "unoriented ", "placeholder ", "credentials ")
     if any(line.startswith(findings) for line in lines):
         return 1
     return 0
@@ -44,6 +45,7 @@ def _report(folder: Path) -> list[str]:
         lines.extend(_declared_source(folder, entries, str(name), _remote(table)))
         if blocks is not None:
             lines.extend(_orientation(blocks, str(name)))
+        lines.extend(_credentials(folder, str(name), _remote(table)))
     if blocks is None:
         lines.append(f"missing {CLAUDE_MD}")
     known = {str(name) for name in declared}
@@ -75,7 +77,7 @@ def _declared_source(folder: Path, entries: dict[str, Path], name: str, remote: 
         lines.append(f"atlas link {shlex.quote(name)} <path>")
         return lines
     destination = shlex.quote(f"../{name}")
-    lines.append(f"git clone {shlex.quote(remote)} {destination}")
+    lines.append(f"git clone {shlex.quote(strip_credentials(remote))} {destination}")
     lines.append(f"atlas link {shlex.quote(name)} {destination}")
     return lines
 
@@ -98,6 +100,16 @@ def _orientation(blocks: dict[str, str], name: str) -> list[str]:
     if placeholders:
         return [f"placeholder {name}: {', '.join(placeholders)}"]
     return []
+
+
+def _credentials(folder: Path, name: str, remote: str | None) -> list[str]:
+    if remote is None or not has_credentials(remote):
+        return []
+    lines = [f"credentials {name} -> {redact_credentials(remote)}"]
+    if judge_source(folder, name) == "ok":
+        target = (folder / name).readlink()
+        lines.append(f"atlas link {shlex.quote(name)} {shlex.quote(str(target))}")
+    return lines
 
 
 def _remote(table: object) -> str | None:
