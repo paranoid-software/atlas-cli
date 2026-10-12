@@ -4,6 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from atlas_cli.cli import main
+from tests.ephemeralatlascontext import EphemeralAtlasContext
 
 
 def _files_under(folder: Path) -> set[str]:
@@ -169,14 +170,12 @@ def test_suggest_migrate_for_an_atlas_without_settings(tmp_path, monkeypatch, ca
     assert "atlas migrate" in capsys.readouterr().out
 
 
-def test_leave_existing_sources_untouched(tmp_path, monkeypatch):
-    source = tmp_path / "elsewhere" / "log-daemon"
-    source.mkdir(parents=True)
-    atlas = tmp_path / "acme"
-    atlas.mkdir()
-    (atlas / "log-daemon").symlink_to(source)
-    monkeypatch.chdir(atlas)
+def test_leave_existing_sources_untouched(monkeypatch):
+    with EphemeralAtlasContext(git_sources=[], plain_sources=["log-daemon"]) as world:
+        atlas = world.atlas
+        (atlas / "log-daemon").symlink_to(world.source("log-daemon"))
+        monkeypatch.chdir(atlas)
 
-    assert main(["init"]) == 0
+        assert main(["init"]) == 0
 
-    assert (atlas / "log-daemon").is_symlink()
+        assert (atlas / "log-daemon").is_symlink()
