@@ -6,6 +6,8 @@
 
 ctx="SESSION START — Orient before doing substantive work: read CLAUDE.md in full; skim any SPEC_*.md / BACKLOG.md at the workspace root; and consult the Atlas framework for the method/conventions (run \`bash ~/.claude/atlas-fetch.sh llms.txt\` for the index, then fetch the piece you need). Do NOT start from zero or make the user re-explain the workspace, repos, or what the project is.
 
+STORES — each kind of knowledge has one home. CLAUDE.md at the Atlas root is this project's orientation (what each source is and how it is worked on) and the conventions of this Atlas alone (its §5); it never holds universal rules. The coding-rules source the Atlas declares holds the universal rules, true for any project; it never holds this Atlas's conventions. CODING_RULES_CANDIDATES.md holds rules this Atlas already applies while they wait for promotion to the source: follow them here exactly as you follow the source's. CODING_RULES_DEVIATIONS.md holds the deliberate divergences from the source in force here. A CLAUDE.md, AGENTS.md or .cursorrules inside a source is not the Atlas's: atlas doctor reports it, and it is never read as rules.
+
 CADENCE — follow the Atlas cadence (method/05-discipline.md): bounded SPEC -> its branch from develop -> step by step, the how approved per the SPEC's working mode -> findings beside the SPEC -> independent review -> the human commits and closes. If you see a drift signal (code requested with no SPEC in STATUS Active; two SPECs in progress and not paused in one repo; work outside the SPEC branch or on main; in paired mode, a step coded without its how approved; a close without independent review or commit), say so ONCE, then follow the human's call. The human runs every git command; give them the exact command. Sessions are disposable: write a decision where it belongs (CLAUDE.md, the SPEC, its findings or the backlog) the moment it is taken — except the how, whose record is the code; one fresh session per SPEC (or per large block of it), and before stopping rewrite its Active block as the handoff. WORKING MODE — read the active SPEC's mode: line (or the Atlas default in CLAUDE.md). paired: propose the how of each step and wait for the human's approval. delegated: as the workbench, execute end to end and stop only on a real blocker or a decision the SPEC doesn't cover; as the principal, hand over a precise, self-contained prompt and review the result. ENVIRONMENT — look at where you stand and what is available, and follow that environment's own rules; where there are none, propose carefully and ask the human before installing or changing anything — never install tooling to match a prompt."
 
 settings=_settings/atlas.toml
@@ -18,7 +20,14 @@ if [ -f "$settings" ] && tr -d '\r' < "$settings" | grep -Eq "$header"; then
             value = substr($0, RSTART, RLENGTH); sub(/^[^"\047]*["\047]/, "", value); sub(/["\047]$/, "", value); print value; exit
         }')
     [ -n "$source" ] || source="(unreadable — check [plugins.coding-rules] in _settings/atlas.toml)"
-    ctx="$ctx"$'\n\n'"CODING RULES — this Atlas declares the coding-rules plugin with source \"$source\" (an mcp:<server> source is queried through that MCP server's tools; a file:<path> source is read from the Atlas). Recall the rules for the area from it before writing code, and follow them. A candidate rule goes to CODING_RULES_CANDIDATES.md and is promoted to the source only in a dedicated session with the human's approval — never written to the source mid-task. A deliberate divergence goes to CODING_RULES_DEVIATIONS.md."
+    ctx="$ctx"$'\n\n'"CODING RULES — this Atlas declares the coding-rules plugin with source \"$source\" (an mcp:<server> source is queried through that MCP server's tools; a file:<path> source is read from the Atlas). Recall the rules for the area from it before writing code, and follow them. A candidate rule goes to CODING_RULES_CANDIDATES.md, is in force in this Atlas from that moment, and is promoted to the source only in a dedicated session with the human's approval — never written to the source mid-task. A deliberate divergence goes to CODING_RULES_DEVIATIONS.md."
+    if [ -f CODING_RULES_CANDIDATES.md ] && tr -d '\r' < CODING_RULES_CANDIDATES.md | awk '
+        /^## Open[[:space:]]*$/ { inside = 1; next }
+        inside && /^## / { exit }
+        inside && NF && $0 !~ /^_\(.*\)_[[:space:]]*$/ { found = 1; exit }
+        END { exit !found }'; then
+        ctx="$ctx"$'\n\n'"=== CODING_RULES_CANDIDATES.md — candidate rules in force here ==="$'\n'"$(cat CODING_RULES_CANDIDATES.md)"
+    fi
     if [ -f CODING_RULES_DEVIATIONS.md ]; then
         ctx="$ctx"$'\n\n'"=== CODING_RULES_DEVIATIONS.md — deviations in force ==="$'\n'"$(cat CODING_RULES_DEVIATIONS.md)"
     fi
