@@ -2,7 +2,13 @@ import shlex
 from pathlib import Path
 
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_file, read_atlas_toml
-from atlas_cli.sourcedeclaration import has_credentials, redact_credentials, strip_credentials
+from atlas_cli.sourcedeclaration import (
+    declared_repos,
+    has_credentials,
+    nested_repos,
+    redact_credentials,
+    strip_credentials,
+)
 from atlas_cli.sourcestate import (
     CLAUDE_MD,
     atlas_entries,
@@ -42,10 +48,13 @@ def _report(folder: Path) -> list[str]:
     blocks = _orientation_blocks(folder)
     lines: list[str] = []
     for name, table in declared.items():
-        lines.extend(_declared_source(folder, entries, str(name), _remote(table)))
+        repos = declared_repos(table)
+        lines.extend(_declared_source(folder, entries, str(name), _remote(table), repos))
         if blocks is not None:
             lines.extend(_orientation(blocks, str(name)))
-        lines.extend(_credentials(folder, str(name), _remote(table)))
+        lines.extend(_credentials(folder, str(name), str(name), _remote(table)))
+        for child, child_remote in repos.items():
+            lines.extend(_credentials(folder, f"{name}/{child}", str(name), child_remote))
     if blocks is None:
         lines.append(f"missing {CLAUDE_MD}")
     known = {str(name) for name in declared}
@@ -59,13 +68,16 @@ def _report(folder: Path) -> list[str]:
     return lines
 
 
-def _declared_source(folder: Path, entries: dict[str, Path], name: str, remote: str | None) -> list[str]:
+def _declared_source(
+    folder: Path, entries: dict[str, Path], name: str, remote: str | None, repos: dict[str, str | None]
+) -> list[str]:
     state = judge_source(folder, name)
     if state == "ok":
         lines = [f"ok {name}"]
         rule_files = find_rule_files(folder / name)
         if rule_files:
             lines.append(f"rules {name}: {', '.join(rule_files)}")
+        lines.extend(_nested(folder, name, repos))
         return lines
     if state == "broken":
         return [f"broken {name} -> {(folder / name).readlink()}"]
@@ -73,12 +85,36 @@ def _declared_source(folder: Path, entries: dict[str, Path], name: str, remote: 
     twin = case_twin(entries, name)
     if twin is not None and entries[twin].is_symlink():
         lines.append(f"atlas unlink {shlex.quote(twin)}")
-    if remote is None:
+    if remote is None and not repos:
         lines.append(f"atlas link {shlex.quote(name)} <path>")
         return lines
     destination = shlex.quote(f"../{name}")
-    lines.append(f"git clone {shlex.quote(strip_credentials(remote))} {destination}")
+    if remote is not None:
+        lines.append(f"git clone {shlex.quote(strip_credentials(remote))} {destination}")
+    for child, child_remote in repos.items():
+        if child_remote is not None:
+            lines.append(f"git clone {shlex.quote(strip_credentials(child_remote))} {shlex.quote(f'../{name}/{child}')}")
     lines.append(f"atlas link {shlex.quote(name)} {destination}")
+    return lines
+
+
+def _nested(folder: Path, name: str, repos: dict[str, str | None]) -> list[str]:
+    """A folder of repos: each declared repo present (with its rule files) or missing, and undeclared ones."""
+    lines: list[str] = []
+    source = folder / name
+    for child, child_remote in repos.items():
+        if (source / child / ".git").exists():
+            rule_files = find_rule_files(source / child)
+            if rule_files:
+                lines.append(f"rules {name}/{child}: {', '.join(rule_files)}")
+            continue
+        lines.append(f"missing {name}/{child}")
+        if child_remote is not None:
+            lines.append(f"git clone {shlex.quote(strip_credentials(child_remote))} {shlex.quote(f'{name}/{child}')}")
+    for child in nested_repos(source):
+        if child not in repos:
+            lines.append(f"undeclared {name}/{child}")
+            lines.append(f"atlas link {shlex.quote(name)} {shlex.quote(str(source.readlink()))}")
     return lines
 
 
@@ -102,13 +138,14 @@ def _orientation(blocks: dict[str, str], name: str) -> list[str]:
     return []
 
 
-def _credentials(folder: Path, name: str, remote: str | None) -> list[str]:
+def _credentials(folder: Path, label: str, source: str, remote: str | None) -> list[str]:
+    """A remote still carrying credentials, with the `atlas link` of its source that rewrites it."""
     if remote is None or not has_credentials(remote):
         return []
-    lines = [f"credentials {name} -> {redact_credentials(remote)}"]
-    if judge_source(folder, name) == "ok":
-        target = (folder / name).readlink()
-        lines.append(f"atlas link {shlex.quote(name)} {shlex.quote(str(target))}")
+    lines = [f"credentials {label} -> {redact_credentials(remote)}"]
+    if judge_source(folder, source) == "ok":
+        target = (folder / source).readlink()
+        lines.append(f"atlas link {shlex.quote(source)} {shlex.quote(str(target))}")
     return lines
 
 

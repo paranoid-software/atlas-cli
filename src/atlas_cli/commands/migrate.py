@@ -20,7 +20,8 @@ from atlas_cli.settingscompletion import (
     complete_claude_settings,
     complete_vscode_settings,
 )
-from atlas_cli.sourcedeclaration import append_source, read_origin
+from atlas_cli.settingscompletion import scan_entries
+from atlas_cli.sourcedeclaration import append_source, nested_repos, read_origin
 
 V0_MARKERS = ("CLAUDE.md", "STATUS.md")
 COCO_CANDIDATES = "COCO_CANDIDATES.md"
@@ -86,12 +87,15 @@ def _plan_migration(folder: Path) -> dict:
     writes: dict[str, str] = {}
     removals: list[str] = []
     toml_text = render_template("atlas.toml")
+    scanned: list[str] = []
     for name, target in targets.items():
         remote = read_origin(target)
-        toml_text = append_source(toml_text, name, remote)
-        label = _describe_source(target, remote)
+        repos = nested_repos(target)
+        toml_text = append_source(toml_text, name, remote, repos)
+        label = _describe_source(target, remote, repos)
         steps.append((f"declare {name} ({label})", f"declared {name} ({label})"))
-    _, writes[VSCODE_SETTINGS] = plan_json_file(folder / VSCODE_SETTINGS, _complete_vscode(list(targets)))
+        scanned.extend(scan_entries(name, repos))
+    _, writes[VSCODE_SETTINGS] = plan_json_file(folder / VSCODE_SETTINGS, _complete_vscode(scanned))
     steps.append((f"complete {VSCODE_SETTINGS}", f"completed {VSCODE_SETTINGS}"))
     directories = [str(target) for target in targets.values()]
     _, writes[CLAUDE_SETTINGS] = plan_json_file(folder / CLAUDE_SETTINGS, _complete_claude(directories))
@@ -119,13 +123,15 @@ def _plan_migration(folder: Path) -> dict:
     return {"steps": steps, "writes": writes, "removals": removals}
 
 
-def _describe_source(target: Path, remote: str | None) -> str:
+def _describe_source(target: Path, remote: str | None, repos: dict[str, str | None]) -> str:
     if remote is not None:
         return remote
     if not target.exists():
         return "broken"
     if (target / ".git").exists():
         return "no remote"
+    if repos:
+        return f"folder of {len(repos)} repos: {', '.join(sorted(repos))}"
     return "not git"
 
 
