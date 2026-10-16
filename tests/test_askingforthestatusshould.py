@@ -37,8 +37,8 @@ def _status(capsys) -> str:
 def test_list_the_active_specs_with_their_lines(monkeypatch, capsys):
     with EphemeralAtlasContext(git_sources=[]) as context:
         atlas = _init(context, monkeypatch)
-        _write(atlas / "SPEC_0002_FIRST.md", "# SPEC_0002_FIRST\nrepos: atlas\n")
-        _write(atlas / "SPEC_0003_SECOND.md", "# SPEC_0003_SECOND\nrepos: atlas\n")
+        _write(atlas / "SPEC_0002_FIRST.md", "# SPEC_0002_FIRST\nstarted: 2026-10-16\nrepos: atlas\n")
+        _write(atlas / "SPEC_0003_SECOND.md", "# SPEC_0003_SECOND\nstarted: 2026-10-16\nrepos: atlas\n")
         _write(
             atlas / "STATUS.md",
             _STATUS_HEAD
@@ -129,7 +129,7 @@ def test_flag_a_backlog_spec_whose_file_is_not_at_the_root(monkeypatch, capsys):
 def test_ignore_findings_files(monkeypatch, capsys):
     with EphemeralAtlasContext(git_sources=[]) as context:
         atlas = _init(context, monkeypatch)
-        _write(atlas / "SPEC_0012_X.md", "# SPEC_0012_X\nrepos: atlas\n")
+        _write(atlas / "SPEC_0012_X.md", "# SPEC_0012_X\nstarted: 2026-10-16\nrepos: atlas\n")
         _write(atlas / "SPEC_0012_FINDINGS.md", "# SPEC_0012 findings\n")
         _write(atlas / "_archived" / "SPEC_0001_FINDINGS.md", "# SPEC_0001 findings\n")
         _write(atlas / "STATUS.md", _STATUS_HEAD + "\n### SPEC_0012_X — IN PROGRESS\n" + _STATUS_TAIL)

@@ -1,3 +1,4 @@
+import datetime
 import re
 import subprocess
 from pathlib import Path
@@ -12,6 +13,8 @@ _ACTIVE_HEADING = re.compile(rf"^### ({_SPEC_NAME})(?: — (.*))?$")
 _ACTIVE_LINE = re.compile(r"^- \*\*(Done|Next|Blocked|Paused):\*\*")
 _SPEC_FILE = re.compile(rf"^({_SPEC_NAME})\.md$")
 _REPOS_LINE = re.compile(r"^repos:(.*)$")
+_STARTED_LINE = re.compile(r"^started:\s*(.*)$")
+_CLOSED_LINE = re.compile(r"^closed:\s*(.*)$")
 _PAUSED_STASH = re.compile(r"^(stash@\{\d+\}): .*?(?<!\w)(SPEC_\d{4}) paused$")
 
 
@@ -109,7 +112,9 @@ def _spec_lines(folder: Path, active: list[dict]) -> list[str]:
         heading = spec["name"] if not spec["status"] else f"{spec['name']} — {spec['status']}"
         lines.append(heading)
         lines.extend(f"  {line}" for line in spec["lines"])
-    lines.extend(_placement_problems(folder, {spec["name"] for spec in active}))
+    names = {spec["name"] for spec in active}
+    lines.extend(_placement_problems(folder, names))
+    lines.extend(_stamp_problems(folder, names))
     return lines
 
 
@@ -132,6 +137,56 @@ def _placement_problems(folder: Path, active: set[str]) -> list[str]:
         if listed and name not in root:
             problems.append(f"! {name}: in {_join(listed)} but its file is not at the root")
     return problems
+
+
+def _stamp_problems(folder: Path, active: set[str]) -> list[str]:
+    root = {name: _header_stamps(folder / f"{name}.md") for name in _list_spec_files(folder)}
+    archived = {
+        name: _header_stamps(folder / "_archived" / f"{name}.md")
+        for name in _list_spec_files(folder / "_archived")
+    }
+    problems: list[str] = []
+    for name in sorted(active):
+        stamps = root.get(name)
+        if stamps is not None and not stamps["started"]:
+            problems.append(f"! {name}: in Active without started:")
+    missing_closed = sum(1 for stamps in archived.values() if not stamps["closed"])
+    if missing_closed == 1:
+        problems.append("! 1 archived SPEC without closed:")
+    elif missing_closed > 1:
+        problems.append(f"! {missing_closed} archived SPECs without closed:")
+    for name in sorted(set(root) | set(archived)):
+        values = {"started": [], "closed": []}
+        for stamps in (root.get(name), archived.get(name)):
+            if stamps is None:
+                continue
+            for field in ("started", "closed"):
+                values[field].extend(stamps[field])
+        for field in ("started", "closed"):
+            if values[field] and any(not _is_date(value) for value in values[field]):
+                problems.append(f"! {name}: {field}: is not a date")
+    return problems
+
+
+def _header_stamps(path: Path) -> dict[str, list[str]]:
+    found: dict[str, list[str]] = {"started": [], "closed": []}
+    patterns = {"started": _STARTED_LINE, "closed": _CLOSED_LINE}
+    for line in _read_text(path).splitlines():
+        if line.startswith("## "):
+            break
+        for field, pattern in patterns.items():
+            match = pattern.match(line)
+            if match:
+                found[field].append(match.group(1))
+    return found
+
+
+def _is_date(value: str) -> bool:
+    try:
+        parsed = datetime.date.fromisoformat(value)
+    except ValueError:
+        return False
+    return parsed.isoformat() == value
 
 
 def _join(labels: list[str]) -> str:
