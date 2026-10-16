@@ -36,7 +36,7 @@ def register(subparsers) -> None:
 
 
 def run_claude(args: argparse.Namespace) -> int:
-    target = _config_folder()
+    target = config_folder()
     try:
         settings_lines, settings_content = _plan_settings(target / SETTINGS, target)
     except ValueError as error:
@@ -53,7 +53,7 @@ def run_claude(args: argparse.Namespace) -> int:
     return 0
 
 
-def _config_folder() -> Path:
+def config_folder() -> Path:
     configured = os.environ.get("CLAUDE_CONFIG_DIR")
     return Path(configured).expanduser() if configured else Path.home() / ".claude"
 
@@ -130,3 +130,35 @@ def _is_wired(entries: list, script: str) -> bool:
             if isinstance(hook, dict) and script in str(hook.get("command", "")):
                 return True
     return False
+
+
+def machinery_state() -> dict:
+    """What `setup claude` would find: each machinery file against the package, each hook wired or not."""
+    target = config_folder()
+    machinery = []
+    for name in MACHINERY:
+        packaged = files("atlas_cli").joinpath("machinery", "claude", name).read_bytes()
+        destination = target / name
+        if not destination.is_file():
+            state = "missing"
+        else:
+            try:
+                state = "unchanged" if destination.read_bytes() == packaged else "differs"
+            except OSError:
+                state = "unreadable"
+        machinery.append({"name": name, "state": state})
+    error = None
+    hooks_table: dict = {}
+    try:
+        hooks_table = _read_settings(target / SETTINGS).get("hooks", {})
+        if not isinstance(hooks_table, dict):
+            raise ValueError(f"Cannot read {target / SETTINGS} (hooks is not an object)")
+    except ValueError as problem:
+        error, hooks_table = str(problem), {}
+    except OSError as problem:
+        error, hooks_table = f"Cannot read {target / SETTINGS} ({problem.strerror or problem})", {}
+    hooks = []
+    for event, script, _matcher in HOOKS:
+        entries = hooks_table.get(event, [])
+        hooks.append({"event": event, "script": script, "wired": isinstance(entries, list) and _is_wired(entries, script)})
+    return {"folder": str(target), "files": machinery, "hooks": hooks, "error": error}

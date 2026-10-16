@@ -29,7 +29,7 @@ def register(subparsers) -> None:
 
 def run(args) -> int:
     try:
-        report = _report(Path.cwd())
+        report = diagnose(Path.cwd())
     except ValueError as error:
         if args.json:
             print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False))
@@ -46,7 +46,7 @@ def run(args) -> int:
     return 0
 
 
-def _report(folder: Path) -> dict:
+def diagnose(folder: Path) -> dict:
     toml_path = folder / ATLAS_TOML
     if not toml_path.is_file():
         raise ValueError(f"This folder is not an Atlas (no {ATLAS_TOML})")
