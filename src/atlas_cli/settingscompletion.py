@@ -38,14 +38,37 @@ def add_directory(absolute: str, previous: Path | None = None):
     return complete
 
 
+def set_scan_repositories(name: str, entries: list[str]):
+    """Replace a source's entries (`<name>` and `<name>/…`) with the given ones, where they were."""
+    def complete(settings: dict) -> dict:
+        repositories = settings.setdefault("git.scanRepositories", [])
+        index = next((i for i, item in enumerate(repositories) if _belongs_to(item, name)), len(repositories))
+        repositories[:] = [item for item in repositories if not _belongs_to(item, name)]
+        repositories[index:index] = [entry for entry in entries if entry not in repositories]
+        return settings
+
+    return complete
+
+
+def _belongs_to(item: str, name: str) -> bool:
+    return item == name or item.startswith(f"{name}/")
+
+
 def remove_scan_repository(name: str):
     def complete(settings: dict) -> dict:
         repositories = settings.get("git.scanRepositories")
         if isinstance(repositories, list):
-            repositories[:] = [item for item in repositories if item != name]
+            repositories[:] = [item for item in repositories if not _belongs_to(item, name)]
         return settings
 
     return complete
+
+
+def scan_entries(name: str, repos: dict[str, str | None]) -> list[str]:
+    """What the editor scans for a source: the source itself, or each nested repo of a folder of repos."""
+    if repos:
+        return [f"{name}/{child}" for child in sorted(repos)]
+    return [name]
 
 
 def remove_directories(stale: set[str]):
