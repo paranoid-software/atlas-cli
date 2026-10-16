@@ -16,7 +16,7 @@ it in order while several people and agents work in it.
 | Tool | What it's for | macOS | Windows (PowerShell, then reopen Git Bash) |
 |---|---|---|---|
 | **Git** (+ Git Bash) | Sources and shared Atlases are git repos; on Windows, Git Bash runs the hooks. | `brew install git` | `winget install Git.Git` |
-| **jq** | The hooks read and write JSON with it. Without it, they fail. | `brew install jq` | `winget install jqlang.jq` |
+| **jq** | The hooks read and write JSON with it. Without it, they stay silent and the coding-rules gate lets every edit through. | `brew install jq` | `winget install jqlang.jq` |
 | **uv** | Installs the `atlas` CLI with its own Python. | `brew install uv` | `winget install astral-sh.uv` |
 | **Claude Code** | The anchor agent. | see claude.com/claude-code | see claude.com/claude-code |
 
@@ -46,8 +46,8 @@ atlas setup claude
 ```
 
 It installs the hooks, the `/atlas-init` and `/atlas-sync` commands and the `workspace-baseline`
-skill into `~/.claude` (or `CLAUDE_CONFIG_DIR` when set), wires the three hooks into
-`settings.json` without touching anything else there, and creates `atlas-source` pointing at the
+skill into `~/.claude` (or `CLAUDE_CONFIG_DIR` when set), wires the hooks into `settings.json`
+after any hook already there, without touching anything else, and creates `atlas-source` pointing at the
 official site when there is none. Run it again after every upgrade; it only changes what
 differs.
 
@@ -67,6 +67,11 @@ instead.
 the hooks, the commands and the skill — don't copy them into `~/.cursor/`. The one thing to add
 on Cursor's side is the MCP server behind an Atlas's `coding-rules` plugin, if it has one, in
 `~/.cursor/mcp.json`.
+
+**The coding-rules gate.** In an Atlas that declares the `coding-rules` plugin, a hook blocks
+the first code edit of each Claude Code session until the declared source has been consulted.
+If the source can't be reached, start Claude Code with `ATLAS_CODING_RULES_GATE=off` to let
+edits through.
 
 ## 4. Use it
 
