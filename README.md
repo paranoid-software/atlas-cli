@@ -82,7 +82,9 @@ edits through.
 - **Older Atlas:** `atlas migrate` shows the plan to bring it to the current model;
   `atlas migrate --apply` applies it.
 - **Day to day:** `atlas status` says where things stand; `/atlas-sync` is the checkpoint;
-  `atlas unlink <name>` drops a source the Atlas no longer uses.
+  `atlas unlink <name>` drops a source the Atlas no longer uses; `atlas ui` opens a local,
+  read-only page on the Atlas — doctor made plain, the SPECs with search, stats, rules and
+  machinery.
 
 How an Atlas works — its files, SPECs, cadence and sharing — is the method:
 [creating an Atlas](https://atlas.paranoid.software/method/06-bootstrap) and
@@ -99,6 +101,7 @@ every command.
 | Hooks do nothing on Windows | Not in Git Bash, or Git for Windows isn't installed (step 1). |
 | `atlas link` can't create the symlink (Windows) | Turn Developer Mode on (step 1). |
 | The site doesn't answer | Serve the framework locally and point `atlas-source` at it (step 3). |
+| Sources don't show in the editor's Source Control | Check `.vscode/settings.json` has `git.autoRepositoryDetection: true` (Cursor defaults to `openEditors`, which ignores `git.scanRepositories`) and reload the window. To see what the editor does, set the Git log level to Trace (`Developer: Set Log Level`), reload, and read the Git output log: its `doInitialScan` line prints the effective `autoRepositoryDetection`. |
 
 ## Develop
 

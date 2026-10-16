@@ -23,28 +23,31 @@ def register(subparsers) -> None:
     parser.set_defaults(handler=run)
 
 
-def run(args) -> int:
-    folder = Path.cwd()
+def status_lines(folder: Path) -> tuple[int, list[str]]:
     toml_path = folder / ATLAS_TOML
     if not toml_path.is_file():
-        print(f"This folder is not an Atlas (no {ATLAS_TOML}).")
-        return 1
+        return 1, [f"This folder is not an Atlas (no {ATLAS_TOML})."]
     try:
         _, declared = read_atlas_toml(toml_path)
     except ValueError as error:
-        print(f"{error}.")
-        return 1
+        return 1, [f"{error}."]
     repos = _repo_paths(declared)
-    active = _read_active(folder)
+    active = read_active(folder)
     lines = ["SPECs"]
     lines.extend(_indent(_spec_lines(folder, active)))
     lines.append("Sources")
     lines.extend(_indent(_source_lines(folder, repos, active)))
     lines.append("Paused")
     lines.extend(_indent(_paused_lines(folder, repos)))
+    return 0, lines
+
+
+def run(args) -> int:
+    folder = Path.cwd()
+    code, lines = status_lines(folder)
     for line in lines:
         print(line)
-    return 0
+    return code
 
 
 def _indent(lines: list[str]) -> list[str]:
@@ -63,7 +66,7 @@ def _is_spec(name: str) -> bool:
     return not name.endswith("_FINDINGS")
 
 
-def _read_active(folder: Path) -> list[dict]:
+def read_active(folder: Path) -> list[dict]:
     active: list[dict] = []
     inside = False
     current: dict | None = None
@@ -86,7 +89,7 @@ def _read_active(folder: Path) -> list[dict]:
     return active
 
 
-def _read_backlog(folder: Path) -> set[str]:
+def read_backlog(folder: Path) -> set[str]:
     found = set()
     for line in _read_text(folder / "BACKLOG.md").splitlines():
         match = _BACKLOG_LINE.match(line)
@@ -119,7 +122,7 @@ def _spec_lines(folder: Path, active: list[dict]) -> list[str]:
 
 
 def _placement_problems(folder: Path, active: set[str]) -> list[str]:
-    backlog = _read_backlog(folder)
+    backlog = read_backlog(folder)
     archived = _list_spec_files(folder / "_archived")
     root = _list_spec_files(folder)
     problems: list[str] = []

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Atlas</title>
+    <link rel="stylesheet" href="/static/atlas.css">
+    <script src="/static/jquery.min.js"></script>
+</head>
+<body>
+
+<header class="c-top" data-controller-name="RefreshPlugster" data-lang="en">
+    <strong class="c-brand">Atlas</strong>
+    <nav class="c-nav">
+        <a href="#doctor">Doctor</a>
+        <a href="#status">Where we are</a>
+        <a href="#specs">SPECs</a>
+        <a href="#stats">Stats</a>
+        <a href="#rules">Coding rules</a>
+        <a href="#machinery">Machinery</a>
+    </nav>
+    <span class="c-muted" data-outlet-id="updatedLabel"></span>
+    <button type="button" data-outlet-id="reloadButton">Reload</button>
+</header>
+
+<main>
+
+<section id="doctor" class="c-panel" data-controller-name="DoctorPlugster" data-lang="en"
+         data-on-refreshplugster-atlaschanged="reload">
+    <h2>Doctor</h2>
+    <p class="c-summary" data-outlet-id="summaryLabel"></p>
+    <div class="c-source-list" data-outlet-id="sourcesList"
+         data-child-templates='["/static/doctor-source-row.html"]'></div>
+    <div class="c-finding-list" data-outlet-id="findingsList"
+         data-child-templates='["/static/doctor-finding-card.html", "/static/doctor-fix-command.html"]'></div>
+</section>
+
+<section id="status" class="c-panel" data-controller-name="StatusPlugster" data-lang="en"
+         data-on-refreshplugster-atlaschanged="reload">
+    <h2>Where we are</h2>
+    <pre class="c-text" data-outlet-id="statusText"></pre>
+</section>
+
+<section id="specs" class="c-panel" data-controller-name="SpecsPlugster" data-lang="en"
+         data-on-refreshplugster-atlaschanged="reload">
+    <h2>SPECs</h2>
+    <div class="c-filters">
+        <input type="search" placeholder="Search SPECs and findings" data-outlet-id="searchInput">
+        <select data-outlet-id="placeSelect">
+            <option value="">Every place</option>
+            <option value="active">Active</option>
+            <option value="backlog">Backlog</option>
+            <option value="archived">Archived</option>
+            <option value="unplaced">Unplaced</option>
+        </select>
+        <select data-outlet-id="repoSelect"
+                data-child-templates='["/static/specs-repo-option.html"]'></select>
+        <select data-outlet-id="modeSelect">
+            <option value="">Every mode</option>
+            <option value="paired">Paired</option>
+            <option value="delegated">Delegated</option>
+            <option value="(default)">Atlas default</option>
+        </select>
+    </div>
+    <p class="c-muted" data-outlet-id="countLabel"></p>
+    <div class="c-specs">
+        <div class="c-spec-list" data-outlet-id="specsList"
+             data-child-templates='["/static/specs-row.html"]'></div>
+        <article class="c-spec-detail" data-outlet-id="detailPanel">
+            <h3 data-outlet-id="detailTitle"></h3>
+            <p class="c-muted" data-outlet-id="detailMeta"></p>
+            <div data-outlet-id="detailSections"
+                 data-child-templates='["/static/specs-section.html"]'></div>
+        </article>
+    </div>
+    <p class="c-muted" data-outlet-id="unreadableLabel"></p>
+</section>
+
+<section id="stats" class="c-panel" data-controller-name="StatsPlugster" data-lang="en"
+         data-on-refreshplugster-atlaschanged="reload">
+    <h2>Stats</h2>
+    <p data-outlet-id="durationsLabel"></p>
+    <div class="c-charts">
+        <div><h3>Closed per week</h3>
+            <div data-outlet-id="weeksChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
+        <div><h3>Findings per SPEC</h3>
+            <div data-outlet-id="findingsChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
+        <div><h3>Paired vs delegated</h3>
+            <div data-outlet-id="modesChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
+        <div><h3>SPECs per repo</h3>
+            <div data-outlet-id="reposChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
+    </div>
+</section>
+
+<section id="rules" class="c-panel" data-controller-name="RulesPlugster" data-lang="en"
+         data-on-refreshplugster-atlaschanged="reload">
+    <h2>Coding rules</h2>
+    <p data-outlet-id="sourceLabel"></p>
+    <h3>Candidates in force</h3>
+    <pre class="c-text" data-outlet-id="candidatesText"></pre>
+    <h3>Deviations in force</h3>
+    <pre class="c-text" data-outlet-id="deviationsText"></pre>
+</section>
+
+<section id="machinery" class="c-panel" data-controller-name="MachineryPlugster" data-lang="en"
+         data-on-refreshplugster-atlaschanged="reload">
+    <h2>Machinery</h2>
+    <p class="c-muted" data-outlet-id="folderLabel"></p>
+    <div data-outlet-id="machineryList" data-child-templates='["/static/machinery-row.html"]'></div>
+</section>
+
+</main>
+
+<script type="module" src="/static/refresh-plugster-boot.js"></script>
+<script type="module" src="/static/doctor-plugster-boot.js"></script>
+<script type="module" src="/static/status-plugster-boot.js"></script>
+<script type="module" src="/static/specs-plugster-boot.js"></script>
+<script type="module" src="/static/stats-plugster-boot.js"></script>
+<script type="module" src="/static/rules-plugster-boot.js"></script>
+<script type="module" src="/static/machinery-plugster-boot.js"></script>
+</body>
+</html>
