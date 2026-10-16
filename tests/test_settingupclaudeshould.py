@@ -10,6 +10,7 @@ _MACHINERY = (
     "hooks/session-orient.sh",
     "hooks/atlas-sync-reminder.sh",
     "hooks/skill-reminder-workspace-baseline.sh",
+    "hooks/coding-rules-gate.sh",
     "commands/atlas-init.md",
     "commands/atlas-sync.md",
     "skills/workspace-baseline/SKILL.md",
@@ -46,6 +47,8 @@ def test_install_the_machinery_on_a_first_run(tmp_path, monkeypatch, capsys):
         "wired SessionStart",
         "wired Stop",
         "wired UserPromptSubmit",
+        "wired PreToolUse",
+        "wired PostToolUse",
     ]
 
 
@@ -78,6 +81,8 @@ def test_change_nothing_on_a_second_run(tmp_path, monkeypatch, capsys):
         "already wired SessionStart",
         "already wired Stop",
         "already wired UserPromptSubmit",
+        "already wired PreToolUse",
+        "already wired PostToolUse",
     ]
 
 
@@ -114,7 +119,10 @@ def test_keep_every_other_setting_and_hook(tmp_path, monkeypatch):
 
     settings = json.loads((folder / "settings.json").read_text(encoding="utf-8"))
     assert settings["model"] == "opus"
-    assert _commands(settings, "PreToolUse") == ["bash /x/guard.sh"]
+    assert _commands(settings, "PreToolUse") == [
+        "bash /x/guard.sh",
+        f'bash "{folder.resolve()}/hooks/coding-rules-gate.sh"',
+    ]
     assert _commands(settings, "UserPromptSubmit") == [
         "bash /x/hooks/git-reminder.sh",
         f'bash "{folder.resolve()}/hooks/skill-reminder-workspace-baseline.sh"',
@@ -204,3 +212,34 @@ def test_skip_a_hook_entry_it_cannot_read(tmp_path, monkeypatch):
     assert _commands({"hooks": {"Stop": settings["hooks"]["Stop"][1:]}}, "Stop") == [
         f'bash "{folder.resolve()}/hooks/atlas-sync-reminder.sh"'
     ]
+
+
+def test_wire_the_coding_rules_gate_before_and_after_tool_calls(tmp_path, monkeypatch):
+    folder = _config_folder(tmp_path, monkeypatch)
+
+    assert main(["setup", "claude"]) == 0
+
+    settings = json.loads((folder / "settings.json").read_text(encoding="utf-8"))
+    command = f'bash "{folder.resolve()}/hooks/coding-rules-gate.sh"'
+    assert settings["hooks"]["PreToolUse"] == [
+        {"matcher": "Edit|Write|MultiEdit|NotebookEdit", "hooks": [{"type": "command", "command": command}]}
+    ]
+    assert settings["hooks"]["PostToolUse"] == [
+        {"matcher": "mcp__.*|Read", "hooks": [{"type": "command", "command": command}]}
+    ]
+
+
+def test_wire_each_event_of_the_gate_on_its_own(tmp_path, monkeypatch, capsys):
+    folder = _config_folder(tmp_path, monkeypatch)
+    folder.mkdir()
+    gate = f'bash "{folder.resolve()}/hooks/coding-rules-gate.sh"'
+    (folder / "settings.json").write_text(
+        json.dumps({"hooks": {"PostToolUse": [{"matcher": "mcp__.*|Read", "hooks": [{"type": "command", "command": gate}]}]}}),
+        encoding="utf-8",
+    )
+
+    main(["setup", "claude"])
+
+    out = capsys.readouterr().out.splitlines()
+    assert "wired PreToolUse" in out
+    assert "already wired PostToolUse" in out
