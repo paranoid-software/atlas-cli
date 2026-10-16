@@ -20,12 +20,14 @@ class EphemeralAtlasContext:
         plain_sources: list[str] | None = None,
         local_git_sources: list[str] | None = None,
         origins: dict[str, str] | None = None,
+        grouped_sources: dict[str, list[str]] | None = None,
         case_insensitive: bool = False,
     ):
         self._git_sources = list(git_sources)
         self._plain_sources = list(plain_sources or [])
         self._local_git_sources = list(local_git_sources or [])
         self._origin_overrides = dict(origins or {})
+        self._grouped_sources = {group: list(children) for group, children in (grouped_sources or {}).items()}
         self._case_insensitive = case_insensitive
         self._saved_os: dict[str, object] = {}
         self.root: Path | None = None
@@ -80,6 +82,18 @@ class EphemeralAtlasContext:
             subprocess.run(["git", "-C", str(folder), "add", "README"], check=True)
             subprocess.run(["git", "-C", str(folder), "commit", "-q", "-m", "Start"], check=True)
             self._sources[name] = folder
+        for group, children in self._grouped_sources.items():
+            folder = self.root / group
+            folder.mkdir()
+            (folder / "README").write_text(f"{group}\n", encoding="utf-8")
+            for child in children:
+                bare = origins / group / f"{child}.git"
+                bare.parent.mkdir(exist_ok=True)
+                self._seed_bare(bare, child)
+                checkout = folder / child
+                subprocess.run(["git", "clone", "-q", str(bare), str(checkout)], check=True)
+                self._origins[f"{group}/{child}"] = _git_output(["remote", "get-url", "origin"], checkout)
+            self._sources[group] = folder
         self.atlas = self.root / "acme"
         self.atlas.mkdir()
 

@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_file, read_atlas_toml
+from atlas_cli.sourcedeclaration import declared_repos
 from atlas_cli.sourcestate import judge_source
 
 _SPEC_NAME = r"SPEC_\d{4}_\w+"
@@ -30,14 +31,14 @@ def run(args) -> int:
     except ValueError as error:
         print(f"{error}.")
         return 1
-    names = [str(name) for name in declared]
+    repos = _repo_paths(declared)
     active = _read_active(folder)
     lines = ["SPECs"]
     lines.extend(_indent(_spec_lines(folder, active)))
     lines.append("Sources")
-    lines.extend(_indent(_source_lines(folder, names, active)))
+    lines.extend(_indent(_source_lines(folder, repos, active)))
     lines.append("Paused")
-    lines.extend(_indent(_paused_lines(folder, names)))
+    lines.extend(_indent(_paused_lines(folder, repos)))
     for line in lines:
         print(line)
     return 0
@@ -147,11 +148,25 @@ def _read_repos(folder: Path, name: str) -> set[str]:
     return set()
 
 
+def _repo_paths(declared: dict) -> list[str]:
+    """Each declared source, or each nested repo of a folder of repos, as `<name>` or `<name>/<child>`."""
+    paths: list[str] = []
+    for name, table in declared.items():
+        repos = declared_repos(table)
+        if repos:
+            paths.extend(f"{name}/{child}" for child in repos)
+        else:
+            paths.append(str(name))
+    return paths
+
+
 def _source_lines(folder: Path, names: list[str], active: list[dict]) -> list[str]:
     touching = [(spec["name"], _read_repos(folder, spec["name"])) for spec in active]
     lines: list[str] = []
     for name in names:
-        state = judge_source(folder, name)
+        state = judge_source(folder, name.partition("/")[0])
+        if state == "ok" and "/" in name and not (folder / name / ".git").exists():
+            state = "missing"
         if state != "ok":
             lines.append(f"{name}: {state}")
             continue
@@ -182,7 +197,7 @@ def _describe_branch(spec: str, branch: str) -> str:
 def _paused_lines(folder: Path, names: list[str]) -> list[str]:
     lines: list[str] = []
     for name in names:
-        if judge_source(folder, name) != "ok":
+        if judge_source(folder, name.partition("/")[0]) != "ok":
             continue
         stashes = _run_git(folder / name, ["stash", "list"])
         if stashes is None:
