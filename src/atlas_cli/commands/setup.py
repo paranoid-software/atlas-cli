@@ -9,15 +9,18 @@ MACHINERY = (
     "hooks/session-orient.sh",
     "hooks/atlas-sync-reminder.sh",
     "hooks/skill-reminder-workspace-baseline.sh",
+    "hooks/coding-rules-gate.sh",
     "commands/atlas-init.md",
     "commands/atlas-sync.md",
     "skills/workspace-baseline/SKILL.md",
 )
-HOOKS = {
-    "SessionStart": "session-orient.sh",
-    "Stop": "atlas-sync-reminder.sh",
-    "UserPromptSubmit": "skill-reminder-workspace-baseline.sh",
-}
+HOOKS = (
+    ("SessionStart", "session-orient.sh", None),
+    ("Stop", "atlas-sync-reminder.sh", None),
+    ("UserPromptSubmit", "skill-reminder-workspace-baseline.sh", None),
+    ("PreToolUse", "coding-rules-gate.sh", "Edit|Write|MultiEdit|NotebookEdit"),
+    ("PostToolUse", "coding-rules-gate.sh", "mcp__.*|Read"),
+)
 ATLAS_SOURCE = "atlas-source"
 DEFAULT_SOURCE = "https://atlas.paranoid.software\n"
 SETTINGS = "settings.json"
@@ -87,7 +90,7 @@ def _plan_settings(path: Path, target: Path) -> tuple[list[str], str | None]:
         raise ValueError(f"Cannot read {path} (hooks is not an object)")
     lines = []
     changed = not path.exists()
-    for event, script in HOOKS.items():
+    for event, script, matcher in HOOKS:
         entries = hooks.setdefault(event, [])
         if not isinstance(entries, list):
             raise ValueError(f"Cannot read {path} (hooks.{event} is not a list)")
@@ -95,7 +98,10 @@ def _plan_settings(path: Path, target: Path) -> tuple[list[str], str | None]:
             lines.append(f"already wired {event}")
             continue
         command = f'bash "{target.resolve()}/hooks/{script}"'
-        entries.append({"hooks": [{"type": "command", "command": command}]})
+        entry = {"hooks": [{"type": "command", "command": command}]}
+        if matcher is not None:
+            entry = {"matcher": matcher, **entry}
+        entries.append(entry)
         lines.append(f"wired {event}")
         changed = True
     content = json.dumps(settings, indent=2, ensure_ascii=False) + "\n" if changed else None
