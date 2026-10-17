@@ -27,6 +27,10 @@ export class RulesPlugster extends Plugster {
         });
     }
 
+    toggleView(args) {
+        this._.root.toggle(args.view === 'rules');
+    }
+
     _t(text) {
         return this.translateTo(this.lang, text);
     }

@@ -6,116 +6,187 @@
     <title>Atlas</title>
     <link rel="stylesheet" href="/static/atlas.css">
     <script src="/static/jquery.min.js"></script>
+    <script src="/static/echarts.min.js"></script>
+    <script src="/static/markdown-it.min.js"></script>
 </head>
-<body>
+<body class="c-app">
 
-<header class="c-top" data-controller-name="RefreshPlugster" data-lang="en">
-    <strong class="c-brand">Atlas</strong>
-    <nav class="c-nav">
-        <a href="#doctor">Doctor</a>
-        <a href="#status">Where we are</a>
-        <a href="#specs">SPECs</a>
-        <a href="#stats">Stats</a>
-        <a href="#rules">Coding rules</a>
-        <a href="#machinery">Machinery</a>
-    </nav>
-    <span class="c-muted" data-outlet-id="updatedLabel"></span>
-    <button type="button" data-outlet-id="reloadButton">Reload</button>
-</header>
-
-<main>
-
-<section id="doctor" class="c-panel" data-controller-name="DoctorPlugster" data-lang="en"
-         data-on-refreshplugster-atlaschanged="reload">
-    <h2>Doctor</h2>
-    <p class="c-summary" data-outlet-id="summaryLabel"></p>
-    <div class="c-source-list" data-outlet-id="sourcesList"
-         data-child-templates='["/static/doctor-source-row.html"]'></div>
-    <div class="c-finding-list" data-outlet-id="findingsList"
-         data-child-templates='["/static/doctor-finding-card.html", "/static/doctor-fix-command.html"]'></div>
-</section>
-
-<section id="status" class="c-panel" data-controller-name="StatusPlugster" data-lang="en"
-         data-on-refreshplugster-atlaschanged="reload">
-    <h2>Where we are</h2>
-    <pre class="c-text" data-outlet-id="statusText"></pre>
-</section>
-
-<section id="specs" class="c-panel" data-controller-name="SpecsPlugster" data-lang="en"
-         data-on-refreshplugster-atlaschanged="reload">
-    <h2>SPECs</h2>
-    <div class="c-filters">
-        <input type="search" placeholder="Search SPECs and findings" data-outlet-id="searchInput">
-        <select data-outlet-id="placeSelect">
-            <option value="">Every place</option>
-            <option value="active">Active</option>
-            <option value="backlog">Backlog</option>
-            <option value="archived">Archived</option>
-            <option value="unplaced">Unplaced</option>
-        </select>
-        <select data-outlet-id="repoSelect"
-                data-child-templates='["/static/specs-repo-option.html"]'></select>
-        <select data-outlet-id="modeSelect">
-            <option value="">Every mode</option>
-            <option value="paired">Paired</option>
-            <option value="delegated">Delegated</option>
-            <option value="(default)">Atlas default</option>
-        </select>
+<aside class="c-sidebar" data-controller-name="ShellPlugster" data-lang="en"
+       data-on-refreshplugster-atlaschanged="reload"
+       data-on-paletteplugster-viewchosen="show"
+       data-on-paletteplugster-specchosen="showSpecs"
+       data-on-overviewplugster-viewchosen="show"
+       data-on-overviewplugster-specchosen="showSpecs"
+       data-on-timelineplugster-specchosen="showSpecs">
+    <div class="c-brand" data-outlet-id="atlasName">Atlas</div>
+    <nav class="c-views" data-outlet-id="viewsList"
+         data-child-templates='["/static/shell-view-link.html"]'></nav>
+    <div class="c-sidebar-foot">
+        <span class="c-muted" data-outlet-id="versionLabel">read-only · 127.0.0.1</span>
     </div>
-    <p class="c-muted" data-outlet-id="countLabel"></p>
-    <div class="c-specs">
-        <div class="c-spec-list" data-outlet-id="specsList"
-             data-child-templates='["/static/specs-row.html"]'></div>
-        <article class="c-spec-detail" data-outlet-id="detailPanel">
-            <h3 data-outlet-id="detailTitle"></h3>
-            <p class="c-muted" data-outlet-id="detailMeta"></p>
-            <div data-outlet-id="detailSections"
-                 data-child-templates='["/static/specs-section.html"]'></div>
+</aside>
+
+<div class="c-main">
+    <header class="c-top" data-controller-name="RefreshPlugster" data-lang="en"
+            data-on-shellplugster-viewshown="setTitle">
+        <h1 class="c-view-title" data-outlet-id="viewTitle">Overview</h1>
+        <span class="c-badge" data-outlet-id="healthBadge"></span>
+        <button type="button" class="c-search-button" data-outlet-id="searchButton">
+            <span>Search SPECs, findings, rules…</span><kbd>⌘K</kbd>
+        </button>
+        <span class="c-muted" data-outlet-id="updatedLabel"></span>
+        <button type="button" data-outlet-id="reloadButton">Reload</button>
+    </header>
+
+    <main class="c-content">
+
+    <section id="overview" class="c-view" data-controller-name="OverviewPlugster" data-lang="en"
+             data-on-shellplugster-viewshown="toggleView"
+             data-on-refreshplugster-atlaschanged="reload">
+        <article class="c-card c-flight" data-outlet-id="flightCard">
+            <h2 data-outlet-id="flightTitle">In flight</h2>
+            <div data-outlet-id="flightList"
+                 data-child-templates='["/static/overview-active-card.html"]'></div>
         </article>
+        <div class="c-kpis" data-outlet-id="kpiList"
+             data-child-templates='["/static/overview-kpi.html"]'></div>
+        <div class="c-grid-2">
+            <article class="c-card">
+                <h2>Needs attention</h2>
+                <div data-outlet-id="attentionList"
+                     data-child-templates='["/static/overview-attention-row.html"]'></div>
+            </article>
+            <article class="c-card">
+                <h2>Recently closed</h2>
+                <div data-outlet-id="recentList"
+                     data-child-templates='["/static/overview-recent-row.html"]'></div>
+            </article>
+        </div>
+    </section>
+
+    <section id="timeline" class="c-view" data-controller-name="TimelinePlugster" data-lang="en"
+             data-on-shellplugster-viewshown="toggleView"
+             data-on-refreshplugster-atlaschanged="reload">
+        <div class="c-toolbar">
+            <div class="c-segmented" data-outlet-id="rangeSwitch"
+                 data-child-templates='["/static/timeline-range-button.html"]'></div>
+            <select data-outlet-id="repoSelect"
+                    data-child-templates='["/static/specs-repo-option.html"]'></select>
+            <span class="c-muted" data-outlet-id="summaryLabel"></span>
+        </div>
+        <article class="c-card c-chart-card">
+            <div class="c-chart" data-outlet-id="dayChart"></div>
+        </article>
+        <p class="c-placeholder" data-outlet-id="emptyLabel"></p>
+        <div class="c-feed" data-outlet-id="feedList"
+             data-child-templates='["/static/timeline-day-row.html", "/static/timeline-event-row.html"]'></div>
+    </section>
+
+    <section id="health" class="c-view" data-controller-name="DoctorPlugster" data-lang="en"
+             data-on-shellplugster-viewshown="toggleView"
+             data-on-refreshplugster-atlaschanged="reload">
+        <p class="c-summary" data-outlet-id="summaryLabel"></p>
+        <div class="c-source-list" data-outlet-id="sourcesList"
+             data-child-templates='["/static/doctor-source-row.html"]'></div>
+        <div class="c-finding-list" data-outlet-id="findingsList"
+             data-child-templates='["/static/doctor-finding-card.html", "/static/doctor-fix-command.html"]'></div>
+        <article class="c-card c-status-card" data-controller-name="StatusPlugster" data-lang="en"
+                 data-on-refreshplugster-atlaschanged="reload">
+            <h2>atlas status</h2>
+            <pre class="c-text" data-outlet-id="statusText"></pre>
+        </article>
+    </section>
+
+    <section id="specs" class="c-view" data-controller-name="SpecsPlugster" data-lang="en"
+             data-on-shellplugster-viewshown="toggleView"
+             data-on-refreshplugster-atlaschanged="reload"
+             data-on-paletteplugster-specchosen="open"
+             data-on-overviewplugster-specchosen="open"
+             data-on-timelineplugster-specchosen="open"
+             data-on-overviewplugster-viewchosen="applyFilter">
+        <div class="c-specs-frame">
+            <div class="c-filters">
+                    <input type="search" placeholder="Search SPECs and findings" data-outlet-id="searchInput">
+                <select data-outlet-id="placeSelect">
+                    <option value="">Every place</option>
+                    <option value="active">Active</option>
+                    <option value="backlog">Backlog</option>
+                    <option value="archived">Archived</option>
+                    <option value="unplaced">Unplaced</option>
+                </select>
+                <select data-outlet-id="repoSelect"
+                        data-child-templates='["/static/specs-repo-option.html"]'></select>
+                <select data-outlet-id="modeSelect">
+                    <option value="">Every mode</option>
+                    <option value="paired">Paired</option>
+                    <option value="delegated">Delegated</option>
+                    <option value="(default)">Atlas default</option>
+                </select>
+                <select data-outlet-id="findingsSelect">
+                    <option value="">With or without findings</option>
+                    <option value="with">With findings</option>
+                </select>
+                <button type="button" class="c-clear-filters" data-outlet-id="clearAllButton">Clear filters</button>
+            </div>
+            <div class="c-filter-bar" data-outlet-id="filterBar">
+                <span data-outlet-id="filterLabel"></span>
+                <button type="button" class="c-link-button" data-outlet-id="clearFilterButton">Clear</button>
+            </div>
+            <p class="c-muted" data-outlet-id="countLabel"></p>
+            <div class="c-specs">
+                <div class="c-spec-list" data-outlet-id="specsList"
+                     data-child-templates='["/static/specs-row.html"]'></div>
+                <div class="c-spec-empty" data-outlet-id="detailEmpty">Choose a SPEC to read it here.</div>
+                <article class="c-spec-detail" data-outlet-id="detailPanel">
+                    <h3 data-outlet-id="detailTitle"></h3>
+                    <p class="c-muted" data-outlet-id="detailMeta"></p>
+                    <div data-outlet-id="detailSections"
+                         data-child-templates='["/static/specs-section.html"]'></div>
+                </article>
+            </div>
+            <p class="c-muted" data-outlet-id="unreadableLabel"></p>
+        </div>
+    </section>
+
+    <section id="rules" class="c-view" data-controller-name="RulesPlugster" data-lang="en"
+             data-on-shellplugster-viewshown="toggleView"
+             data-on-refreshplugster-atlaschanged="reload">
+        <p data-outlet-id="sourceLabel"></p>
+        <h2>Candidates in force</h2>
+        <pre class="c-text" data-outlet-id="candidatesText"></pre>
+        <h2>Deviations in force</h2>
+        <pre class="c-text" data-outlet-id="deviationsText"></pre>
+    </section>
+
+    <section id="machinery" class="c-view" data-controller-name="MachineryPlugster" data-lang="en"
+             data-on-shellplugster-viewshown="toggleView"
+             data-on-refreshplugster-atlaschanged="reload">
+        <p class="c-muted" data-outlet-id="folderLabel"></p>
+        <div data-outlet-id="machineryList" data-child-templates='["/static/machinery-row.html"]'></div>
+    </section>
+
+    </main>
+</div>
+
+<div class="c-palette-backdrop" data-controller-name="PalettePlugster" data-lang="en"
+     data-on-refreshplugster-atlaschanged="reload"
+     data-on-refreshplugster-searchrequested="open">
+    <div class="c-palette" data-outlet-id="paletteBox">
+        <input type="text" placeholder="Jump to a view, a SPEC, a finding, a rule…" data-outlet-id="queryInput">
+        <div class="c-palette-results" data-outlet-id="resultsList"
+             data-child-templates='["/static/palette-result-row.html"]'></div>
+        <p class="c-muted c-palette-hint">↑↓ move · Enter open · Esc close</p>
     </div>
-    <p class="c-muted" data-outlet-id="unreadableLabel"></p>
-</section>
-
-<section id="stats" class="c-panel" data-controller-name="StatsPlugster" data-lang="en"
-         data-on-refreshplugster-atlaschanged="reload">
-    <h2>Stats</h2>
-    <p data-outlet-id="durationsLabel"></p>
-    <div class="c-charts">
-        <div><h3>Closed per week</h3>
-            <div data-outlet-id="weeksChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
-        <div><h3>Findings per SPEC</h3>
-            <div data-outlet-id="findingsChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
-        <div><h3>Paired vs delegated</h3>
-            <div data-outlet-id="modesChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
-        <div><h3>SPECs per repo</h3>
-            <div data-outlet-id="reposChart" data-child-templates='["/static/stats-bar.html"]'></div></div>
-    </div>
-</section>
-
-<section id="rules" class="c-panel" data-controller-name="RulesPlugster" data-lang="en"
-         data-on-refreshplugster-atlaschanged="reload">
-    <h2>Coding rules</h2>
-    <p data-outlet-id="sourceLabel"></p>
-    <h3>Candidates in force</h3>
-    <pre class="c-text" data-outlet-id="candidatesText"></pre>
-    <h3>Deviations in force</h3>
-    <pre class="c-text" data-outlet-id="deviationsText"></pre>
-</section>
-
-<section id="machinery" class="c-panel" data-controller-name="MachineryPlugster" data-lang="en"
-         data-on-refreshplugster-atlaschanged="reload">
-    <h2>Machinery</h2>
-    <p class="c-muted" data-outlet-id="folderLabel"></p>
-    <div data-outlet-id="machineryList" data-child-templates='["/static/machinery-row.html"]'></div>
-</section>
-
-</main>
+</div>
 
 <script type="module" src="/static/refresh-plugster-boot.js"></script>
+<script type="module" src="/static/shell-plugster-boot.js"></script>
+<script type="module" src="/static/palette-plugster-boot.js"></script>
+<script type="module" src="/static/overview-plugster-boot.js"></script>
+<script type="module" src="/static/timeline-plugster-boot.js"></script>
 <script type="module" src="/static/doctor-plugster-boot.js"></script>
 <script type="module" src="/static/status-plugster-boot.js"></script>
 <script type="module" src="/static/specs-plugster-boot.js"></script>
-<script type="module" src="/static/stats-plugster-boot.js"></script>
 <script type="module" src="/static/rules-plugster-boot.js"></script>
 <script type="module" src="/static/machinery-plugster-boot.js"></script>
 </body>
