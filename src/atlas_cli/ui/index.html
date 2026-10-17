@@ -17,7 +17,8 @@
        data-on-paletteplugster-specchosen="showSpecs"
        data-on-overviewplugster-viewchosen="show"
        data-on-overviewplugster-specchosen="showSpecs"
-       data-on-timelineplugster-specchosen="showSpecs">
+       data-on-timelineplugster-specchosen="showSpecs"
+       data-on-flowplugster-specchosen="showSpecs">
     <div class="c-brand" data-outlet-id="atlasName">Atlas</div>
     <nav class="c-views" data-outlet-id="viewsList"
          data-child-templates='["/static/shell-view-link.html"]'></nav>
@@ -62,6 +63,20 @@
                      data-child-templates='["/static/overview-recent-row.html"]'></div>
             </article>
         </div>
+        <div class="c-grid-2" data-controller-name="FlowPlugster" data-lang="en"
+             data-on-shellplugster-viewshown="resize"
+             data-on-refreshplugster-atlaschanged="reload">
+            <article class="c-card c-chart-card">
+                <h2>Started and closed per week</h2>
+                <div class="c-chart" data-outlet-id="throughputChart"></div>
+                <p class="c-muted c-chart-note" data-outlet-id="throughputNote"></p>
+            </article>
+            <article class="c-card c-chart-card">
+                <h2>Lead time and working time</h2>
+                <div class="c-chart" data-outlet-id="durationChart"></div>
+                <p class="c-muted c-chart-note" data-outlet-id="durationNote"></p>
+            </article>
+        </div>
     </section>
 
     <section id="timeline" class="c-view" data-controller-name="TimelinePlugster" data-lang="en"
@@ -86,8 +101,17 @@
              data-on-shellplugster-viewshown="toggleView"
              data-on-refreshplugster-atlaschanged="reload">
         <p class="c-summary" data-outlet-id="summaryLabel"></p>
-        <div class="c-source-list" data-outlet-id="sourcesList"
-             data-child-templates='["/static/doctor-source-row.html"]'></div>
+        <section class="c-health-block" data-controller-name="SourcesPlugster" data-lang="en"
+                 data-on-shellplugster-viewshown="refresh"
+                 data-on-refreshplugster-atlaschanged="reload">
+            <div class="c-block-head"><h2>Sources</h2><span class="c-muted" data-outlet-id="summaryLabel"></span></div>
+            <div class="c-source-map" data-outlet-id="sourcesList"
+                 data-child-templates='["/static/sources-card.html"]'></div>
+            <p class="c-muted" data-outlet-id="unreadableLabel"></p>
+        </section>
+        <div class="c-block-head" data-outlet-id="findingsHead"><h2>Findings</h2>
+            <div class="c-chips" data-outlet-id="kindSwitch"
+                 data-child-templates='["/static/doctor-kind-button.html"]'></div></div>
         <div class="c-finding-list" data-outlet-id="findingsList"
              data-child-templates='["/static/doctor-finding-card.html", "/static/doctor-fix-command.html"]'></div>
         <article class="c-card c-status-card" data-controller-name="StatusPlugster" data-lang="en"
@@ -103,6 +127,7 @@
              data-on-paletteplugster-specchosen="open"
              data-on-overviewplugster-specchosen="open"
              data-on-timelineplugster-specchosen="open"
+             data-on-flowplugster-specchosen="open"
              data-on-overviewplugster-viewchosen="applyFilter">
         <div class="c-specs-frame">
             <div class="c-filters">
@@ -183,8 +208,10 @@
 <script type="module" src="/static/shell-plugster-boot.js"></script>
 <script type="module" src="/static/palette-plugster-boot.js"></script>
 <script type="module" src="/static/overview-plugster-boot.js"></script>
+<script type="module" src="/static/flow-plugster-boot.js"></script>
 <script type="module" src="/static/timeline-plugster-boot.js"></script>
 <script type="module" src="/static/doctor-plugster-boot.js"></script>
+<script type="module" src="/static/sources-plugster-boot.js"></script>
 <script type="module" src="/static/status-plugster-boot.js"></script>
 <script type="module" src="/static/specs-plugster-boot.js"></script>
 <script type="module" src="/static/rules-plugster-boot.js"></script>
