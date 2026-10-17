@@ -238,3 +238,45 @@ def test_list_an_unreadable_status_and_keep_serving_the_specs(monkeypatch):
 
     assert [spec["name"] for spec in corpus["specs"]] == ["SPEC_0002_X"]
     assert "STATUS.md" in corpus["unreadable"]
+
+
+def test_bring_the_handoff_of_an_active_spec(monkeypatch):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        _write(atlas / "STATUS.md", "# acme — STATUS (living)\n\n## Active\n\n### SPEC_0002_ACTIVE_WORK — IN REVIEW\n"
+               "- **Done:** the endpoints.\n- **Next:** the page.\n\n## Recently closed\n")
+        _write(atlas / "SPEC_0002_ACTIVE_WORK.md", "# SPEC_0002_ACTIVE_WORK\n")
+        _write(atlas / "_archived" / "SPEC_0001_DONE.md", "# SPEC_0001_DONE\n")
+
+        specs = _by_name(_corpus(atlas))
+
+    assert specs["SPEC_0002_ACTIVE_WORK"]["status"] == "IN REVIEW"
+    assert specs["SPEC_0002_ACTIVE_WORK"]["handoff"] == {"Done": "the endpoints.", "Next": "the page."}
+    assert (specs["SPEC_0001_DONE"]["status"], specs["SPEC_0001_DONE"]["handoff"]) == (None, {})
+
+
+def test_report_spec_files_with_an_older_name_without_reading_them(monkeypatch):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        _write(atlas / "SPEC_0001_NEW_WORK.md", "# SPEC_0001 — New work\n")
+        _write(atlas / "SPEC_DUAL_DISTRIBUTION.md", "# Dual distribution\n")
+        _write(atlas / "_archived/SPEC_BASELINE_ALIGNMENT-2026-05-18.md", "# Baseline\n")
+        _write(atlas / "_archived/SPEC_DUAL_FINDINGS.md", "- a finding\n")
+
+        corpus = _corpus(atlas)
+
+    assert list(_by_name(corpus)) == ["SPEC_0001_NEW_WORK"]
+    assert corpus["unrecognized"] == ["SPEC_DUAL_DISTRIBUTION.md", "_archived/SPEC_BASELINE_ALIGNMENT-2026-05-18.md"]
+
+
+def test_serve_an_archived_spec_without_stamps(monkeypatch):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        _write(atlas / "_archived/SPEC_0001_OLD_WORK.md", "# SPEC_0001 — Old work\n\n## Goal\nDone long ago.\n")
+
+        with _server(atlas) as port:
+            spec = _by_name(_get_json(port, "/api/corpus"))["SPEC_0001_OLD_WORK"]
+            timeline = _get_json(port, "/api/timeline?days=all")
+
+    assert (spec["place"], spec["created"], spec["started"], spec["closed"]) == ("archived", None, None, None)
+    assert timeline["events"] == []

@@ -142,6 +142,10 @@ export class DoctorPlugster extends Plugster {
         }).catch(() => button.text(this._t('Select and copy it')));
     }
 
+    toggleView(args) {
+        this._.root.toggle(args.view === 'health');
+    }
+
     _t(text) {
         return this.translateTo(this.lang, text);
     }

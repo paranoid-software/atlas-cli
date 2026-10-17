@@ -40,6 +40,10 @@ export class MachineryPlugster extends Plugster {
         outlets.stateLabel.text(state).addClass(healthy ? 'is-ok' : 'is-bad');
     }
 
+    toggleView(args) {
+        this._.root.toggle(args.view === 'machinery');
+    }
+
     _t(text) {
         return this.translateTo(this.lang, text);
     }
