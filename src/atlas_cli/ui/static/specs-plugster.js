@@ -36,7 +36,9 @@ export class SpecsPlugster extends Plugster {
         this._specs = [];
         this._index = null;
         this._selected = null;
+        this._cursor = null;
         this._terms = [];
+        this._markdown = window.markdownit({html: false, linkify: false, typographer: false}).disable('image');
         this.setLocales({});
     }
 
@@ -48,7 +50,48 @@ export class SpecsPlugster extends Plugster {
         });
         this._.clearFilterButton.click(() => this._clearFilters());
         this._.clearAllButton.click(() => this._clearFilters());
+        this._.searchInput.on('keydown', (event) => this._onKey(event));
+        this._.specsList.attr('tabindex', '0').on('keydown', (event) => this._onKey(event));
         this._.detailPanel.hide();
+    }
+
+    // ↑↓ move through the list, Enter opens, Esc clears the search (or closes the open SPEC).
+    _onKey(event) {
+        let keys = this._.specsList.getItemsAsArray().map((item) => item.outlets.root.attr('data-key'));
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            if (!keys.length) return;
+            event.preventDefault();
+            let at = keys.indexOf(this._cursor || this._selected);
+            let next = event.key === 'ArrowDown' ? Math.min(at + 1, keys.length - 1) : Math.max(at - 1, 0);
+            this._cursor = keys[at < 0 ? 0 : next];
+            this._markCursor();
+        } else if (event.key === 'Enter') {
+            let key = this._cursor || (keys.length === 1 ? keys[0] : null);
+            if (!key) return;
+            event.preventDefault();
+            this._selected = key;
+            this._cursor = null;
+            this._markCursor();
+            this._renderSelected();
+        } else if (event.key === 'Escape') {
+            if (this._.searchInput.val()) {
+                event.preventDefault();
+                this._.searchInput.val('');
+                this._renderList();
+            } else if (this._selected) {
+                event.preventDefault();
+                this._selected = null;
+                this._renderSelected();
+            }
+        }
+    }
+
+    _markCursor() {
+        this._.specsList.getItemsAsArray().forEach((item) => {
+            let here = item.outlets.root.attr('data-key') === this._cursor;
+            item.outlets.root.toggleClass('is-cursor', here);
+            if (here) this._scrollListTo(item.outlets.root[0]);
+        });
     }
 
     reload() {
@@ -72,6 +115,8 @@ export class SpecsPlugster extends Plugster {
 
     _toggle(name) {
         this._selected = this._selected === name ? null : name;
+        this._cursor = null;
+        this._markCursor();
         this._renderSelected();
     }
 
@@ -165,6 +210,8 @@ export class SpecsPlugster extends Plugster {
             let result = matches ? matches.get(spec.name) : null;
             outlets.matchLabel.text(result ? this._describeMatch(result) : '');
         });
+        if (!shown.some((spec) => spec.name === this._cursor)) this._cursor = null;
+        this._markCursor();
         this._.countLabel.text(this._t('{shown} of {total} SPECs')
             .replace('{shown}', shown.length).replace('{total}', this._specs.length));
         this._renderFilterBar(query, place, repo, mode, findings);
@@ -224,7 +271,7 @@ export class SpecsPlugster extends Plugster {
                 0, `section-${position}`, {heading}, {headingLabel: {}, bodyText: {}},
                 this._.detailSections.count());
             outlets.headingLabel.text(heading);
-            this._highlight(outlets.bodyText, body);
+            this._renderMarkdown(outlets.bodyText, body);
         });
         this._markSelected(true);
     }
@@ -244,14 +291,39 @@ export class SpecsPlugster extends Plugster {
         else if (top + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + row.offsetHeight - list.clientHeight;
     }
 
+    // markdown-it with raw HTML off escapes whatever the file carries; then the matches are marked
+    // inside the rendered text, never inside a tag.
+    _renderMarkdown(outlet, text) {
+        outlet.html(this._markdown.render(text || ''));
+        outlet.find('a').attr({target: '_blank', rel: 'noopener noreferrer'});
+        if (!this._terms.length) return;
+        let pattern = this._pattern();
+        let walk = (node) => {
+            $(node).contents().each((index, child) => {
+                if (child.nodeType === 3) {
+                    let parts = child.nodeValue.split(pattern);
+                    if (parts.length < 2) return;
+                    $(child).replaceWith(parts.map((part, at) => (
+                        at % 2 === 1 ? $('<mark>').text(part)[0] : document.createTextNode(part))));
+                } else if (child.nodeType === 1 && child.nodeName !== 'MARK') {
+                    walk(child);
+                }
+            });
+        };
+        walk(outlet[0]);
+    }
+
+    _pattern() {
+        return new RegExp(`(${this._terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+    }
+
     _highlight(outlet, text) {
         outlet.empty();
         if (!this._terms.length) {
             outlet.text(text);
             return;
         }
-        let pattern = new RegExp(`(${this._terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-        text.split(pattern).forEach((part, index) => {
+        text.split(this._pattern()).forEach((part, index) => {
             if (!part) return;
             outlet.append(index % 2 === 1 ? $('<mark>').text(part) : document.createTextNode(part));
         });

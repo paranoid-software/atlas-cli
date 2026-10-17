@@ -4,11 +4,14 @@ import {Plugster} from './plugster.js';
 export class DoctorPlugster extends Plugster {
     constructor(api, outlets = {
         summaryLabel: {},
-        sourcesList: {},
+        findingsHead: {},
+        kindSwitch: {},
         findingsList: {}
     }) {
         super(outlets);
         this._api = api;
+        this._report = null;
+        this._kind = '';
         this.setLocales({});
     }
 
@@ -21,15 +24,15 @@ export class DoctorPlugster extends Plugster {
     }
 
     _render(report) {
-        this._.sourcesList.clear();
+        this._report = report;
+        this._.kindSwitch.clear();
         this._.findingsList.clear();
         this._.summaryLabel.removeClass('is-ok is-bad');
+        this._.findingsHead.toggle(!report.error && report.findings.length > 0);
         if (report.error) {
             this._.summaryLabel.addClass('is-bad').text(report.error);
             return;
         }
-        report.sources.forEach((source) => this._renderSource(source));
-        report.findings.forEach((finding, index) => this._renderFinding(finding, index));
         if (report.ok) {
             this._.summaryLabel.addClass('is-ok').text(this._t('Everything is in order.'));
         } else {
@@ -37,22 +40,22 @@ export class DoctorPlugster extends Plugster {
             let text = count === 1 ? this._t('1 thing needs attention.') : this._t('{count} things need attention.');
             this._.summaryLabel.addClass('is-bad').text(text.replace('{count}', count));
         }
-    }
-
-    _renderSource(source) {
-        let outlets = this._.sourcesList.buildListItem(
-            0, source.name, source, {nameLabel: {}, stateLabel: {}}, this._.sourcesList.count());
-        let missingRepos = (source.repos || []).filter((repo) => repo.state !== 'ok').length;
-        let healthy = source.state === 'ok' && missingRepos === 0;
-        outlets.root.addClass(healthy ? 'is-ok' : 'is-bad');
-        outlets.nameLabel.text(source.name);
-        let state = this._t(source.state);
-        if (source.repos) {
-            let present = source.repos.length - missingRepos;
-            state = this._t('{state}, {present} of {total} repos')
-                .replace('{state}', state).replace('{present}', present).replace('{total}', source.repos.length);
+        let kinds = [...new Set(report.findings.map((finding) => finding.kind))];
+        if (!kinds.includes(this._kind)) this._kind = '';
+        if (kinds.length > 1) {
+            [''].concat(kinds).forEach((kind) => {
+                let count = kind ? report.findings.filter((finding) => finding.kind === kind).length : report.findings.length;
+                let chip = this._.kindSwitch.buildListItem(
+                    0, kind || 'all', {kind}, {nameLabel: {}, countLabel: {}}, this._.kindSwitch.count(),
+                    (key, data) => { this._kind = data.kind; this._render(this._report); });
+                chip.nameLabel.text(kind ? this._t(kind) : this._t('All'));
+                chip.countLabel.text(String(count));
+                chip.root.toggleClass('is-current', kind === this._kind);
+            });
         }
-        outlets.stateLabel.text(state);
+        report.findings.forEach((finding, index) => {
+            if (!this._kind || finding.kind === this._kind) this._renderFinding(finding, index);
+        });
     }
 
     _renderFinding(finding, index) {
