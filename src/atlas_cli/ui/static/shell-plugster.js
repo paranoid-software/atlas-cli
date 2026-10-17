@@ -91,8 +91,20 @@ export class ShellPlugster extends Plugster {
             outlets.root.attr('href', `#${view.id}`).toggleClass('is-current', view.id === current);
             outlets.nameLabel.text(this._t(view.name));
             let count = this._counts[view.id];
-            outlets.countLabel.text(count ? String(count) : '').toggleClass('is-bad', view.id !== 'specs' && count > 0);
+            outlets.countLabel.text(count ? String(count) : '')
+                .toggleClass('is-bad', view.id !== 'specs' && count > 0)
+                .toggleClass('is-active', view.id === 'specs' && count > 0);
+            outlets.root.attr('title', count ? this._countTitle(view.id, count) : this._t(view.name));
         });
+    }
+
+    _countTitle(view, count) {
+        let titles = {
+            specs: count === 1 ? '1 active SPEC' : '{count} active SPECs',
+            health: count === 1 ? '1 thing to fix' : '{count} things to fix',
+            machinery: count === 1 ? '1 machinery file or hook is off' : '{count} machinery files or hooks are off'
+        };
+        return this._t(titles[view] || '{count}').replace('{count}', count);
     }
 
     _t(text) {

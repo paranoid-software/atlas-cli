@@ -23,6 +23,8 @@ def run(args) -> int:
     folder = Path.cwd()
     if not (folder / ATLAS_TOML).is_file():
         print(f"This folder is not an Atlas (no {ATLAS_TOML}).")
+        if (folder / "STATUS.md").is_file():
+            print("It looks like an Atlas of the older model: run `atlas migrate` to bring it up to date.")
         return 1
     try:
         server = make_server(folder, args.port)

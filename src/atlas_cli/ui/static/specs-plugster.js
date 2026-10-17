@@ -21,6 +21,7 @@ export class SpecsPlugster extends Plugster {
         filterBar: {},
         filterLabel: {},
         clearFilterButton: {},
+        clearAllButton: {},
         countLabel: {},
         specsList: {},
         detailPanel: {},
@@ -46,8 +47,8 @@ export class SpecsPlugster extends Plugster {
             select.on('change', () => this._renderList());
         });
         this._.clearFilterButton.click(() => this._clearFilters());
+        this._.clearAllButton.click(() => this._clearFilters());
         this._.detailPanel.hide();
-        this._.filterBar.hide();
     }
 
     reload() {
@@ -66,6 +67,11 @@ export class SpecsPlugster extends Plugster {
 
     open(args) {
         this._selected = args.spec;
+        this._renderSelected();
+    }
+
+    _toggle(name) {
+        this._selected = this._selected === name ? null : name;
         this._renderSelected();
     }
 
@@ -140,16 +146,20 @@ export class SpecsPlugster extends Plugster {
             if (mode === '(default)') return !spec.mode;
             return !mode || spec.mode === mode;
         });
+        let activeFirst = (left, right) => (right.place === 'active') - (left.place === 'active');
         if (matches) {
-            shown.sort((left, right) => matches.get(right.name).score - matches.get(left.name).score);
+            shown.sort((left, right) => activeFirst(left, right) || matches.get(right.name).score - matches.get(left.name).score);
         } else {
-            shown.sort((left, right) => right.number.localeCompare(left.number));
+            shown.sort((left, right) => activeFirst(left, right) || right.number.localeCompare(left.number));
         }
         this._.specsList.clear();
         shown.forEach((spec) => {
             let outlets = this._.specsList.buildListItem(
-                0, spec.name, spec, {nameLabel: {}, metaLabel: {}, matchLabel: {}},
-                this._.specsList.count(), (key) => this.open({spec: key}));
+                0, spec.name, spec, {statusLabel: {}, nameLabel: {}, metaLabel: {}, matchLabel: {}},
+                this._.specsList.count(), (key) => this._toggle(key));
+            let active = spec.place === 'active';
+            outlets.root.toggleClass('is-active', active);
+            outlets.statusLabel.toggle(active).text(active ? (spec.status || this._t('active')) : '');
             this._highlight(outlets.nameLabel, `SPEC_${spec.number} — ${spec.title}`);
             outlets.metaLabel.text(this._meta(spec));
             let result = matches ? matches.get(spec.name) : null;
@@ -168,8 +178,12 @@ export class SpecsPlugster extends Plugster {
         if (repo) parts.push(this._t('in {repo}').replace('{repo}', repo));
         if (mode) parts.push(mode === '(default)' ? this._t('in the Atlas default mode') : this._t('in {mode} mode').replace('{mode}', mode));
         if (query) parts.push(this._t('matching "{query}"').replace('{query}', query));
-        this._.filterBar.toggle(parts.length > 0);
-        this._.filterLabel.text(this._t('Showing: {filters}').replace('{filters}', parts.join(' · ')));
+        this._.filterBar.toggleClass('is-filtered', parts.length > 0);
+        this._.clearAllButton.toggleClass('is-armed', parts.length > 0);
+        this._.clearFilterButton.toggle(parts.length > 0);
+        this._.filterLabel.text(parts.length
+            ? this._t('Showing: {filters}').replace('{filters}', parts.join(' · '))
+            : this._t('Showing: every SPEC'));
     }
 
     _describeMatch(result) {
@@ -219,8 +233,15 @@ export class SpecsPlugster extends Plugster {
         this._.specsList.getItemsAsArray().forEach((item) => {
             let selected = item.outlets.root.attr('data-key') === this._selected;
             item.outlets.root.toggleClass('is-selected', selected).attr('aria-selected', selected ? 'true' : 'false');
-            if (selected && scroll) item.outlets.root[0].scrollIntoView({block: 'nearest'});
+            if (selected && scroll) this._scrollListTo(item.outlets.root[0]);
         });
+    }
+
+    _scrollListTo(row) {
+        let list = this._.specsList[0];
+        let top = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+        if (top < list.scrollTop) list.scrollTop = top;
+        else if (top + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + row.offsetHeight - list.clientHeight;
     }
 
     _highlight(outlet, text) {

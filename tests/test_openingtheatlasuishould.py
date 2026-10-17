@@ -368,3 +368,14 @@ def test_answer_several_requests_on_one_connection(monkeypatch):
             connection.close()
 
     assert answers == [(200, 11)] * 3
+
+
+def test_point_an_atlas_of_the_older_model_to_migrate(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        monkeypatch.chdir(world.atlas)
+        (world.atlas / "STATUS.md").write_text("# acme — STATUS\n", encoding="utf-8", newline="\n")
+
+        code = main(["ui", "--no-browser"])
+
+    assert code == 1
+    assert "atlas migrate" in capsys.readouterr().out

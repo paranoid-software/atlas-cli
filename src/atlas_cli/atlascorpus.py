@@ -16,15 +16,22 @@ _DEVIATIONS = "CODING_RULES_DEVIATIONS.md"
 def read_corpus(folder: Path) -> dict:
     """Every SPEC, DRAFT and coding-rules file of the Atlas, as the page needs them."""
     unreadable: list[str] = []
-    active = {spec["name"] for spec in _guarded(folder, "STATUS.md", read_active, [], unreadable)}
+    active_blocks = {spec["name"]: spec for spec in _guarded(folder, "STATUS.md", read_active, [], unreadable)}
+    active = set(active_blocks)
     backlog = _guarded(folder, "BACKLOG.md", read_backlog, set(), unreadable)
     specs = []
+    unrecognized = []
     for place_folder in (folder, folder / "_archived"):
+        unrecognized += [str(path.relative_to(folder)) for path in _legacy_spec_files(place_folder)]
         for path in _spec_files(place_folder):
             text = _read(folder, path, unreadable)
             if text is None:
                 continue
-            specs.append(_spec(folder, path, text, active, backlog, unreadable))
+            spec = _spec(folder, path, text, active, backlog, unreadable)
+            block = active_blocks.get(spec["name"]) if spec["place"] == "active" else None
+            spec["status"] = (block["status"] or None) if block else None
+            spec["handoff"] = _handoff(block["lines"]) if block else {}
+            specs.append(spec)
     drafts = []
     for path in sorted(entry for entry in folder.iterdir() if entry.is_file() and _DRAFT_FILE.match(entry.name)):
         text = _read(folder, path, unreadable)
@@ -40,6 +47,7 @@ def read_corpus(folder: Path) -> dict:
         "drafts": drafts,
         "rules": rules,
         "unreadable": sorted(unreadable),
+        "unrecognized": sorted(unrecognized),
     }
 
 
@@ -110,6 +118,21 @@ def _spec_files(place_folder: Path) -> list[Path]:
     )
 
 
+def _legacy_spec_files(place_folder: Path) -> list[Path]:
+    """SPEC files whose name is not SPEC_NNNN_SLUG.md: left as they are, reported, never read."""
+    if not place_folder.is_dir():
+        return []
+    return sorted(
+        entry
+        for entry in place_folder.iterdir()
+        if entry.is_file()
+        and entry.name.startswith("SPEC_")
+        and entry.suffix == ".md"
+        and not _SPEC_FILE.match(entry.name)
+        and not entry.stem.endswith("_FINDINGS")
+    )
+
+
 def _spec(folder: Path, path: Path, text: str, active: set[str], backlog: set[str], unreadable: list[str]) -> dict:
     number, slug = _SPEC_FILE.match(path.name).groups()
     archived = path.parent != folder
@@ -129,6 +152,16 @@ def _spec(folder: Path, path: Path, text: str, active: set[str], backlog: set[st
         "sections": _sections(text),
         "findings": _read(folder, findings_path, unreadable) if findings_path.is_file() else None,
     }
+
+
+def _handoff(lines: list[str]) -> dict[str, str]:
+    """The Done / Next / Blocked / Paused lines of a SPEC's block in STATUS → Active."""
+    handoff: dict[str, str] = {}
+    for line in lines:
+        match = re.match(r"^- \*\*(Done|Next|Blocked|Paused):\*\*\s*(.*)$", line)
+        if match:
+            handoff[match.group(1)] = match.group(2).strip()
+    return handoff
 
 
 def _header(text: str) -> dict[str, str | None]:

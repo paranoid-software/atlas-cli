@@ -5,6 +5,9 @@ const DAY = 24 * 60 * 60 * 1000;
 // Where we stand, at a glance: the KPIs, what needs attention, what closed lately.
 export class OverviewPlugster extends Plugster {
     constructor(api, outlets = {
+        flightCard: {},
+        flightTitle: {},
+        flightList: {},
         kpiList: {},
         attentionList: {},
         recentList: {}
@@ -27,9 +30,57 @@ export class OverviewPlugster extends Plugster {
     }
 
     reload() {
-        $.when(this._api.get('corpus'), this._api.get('doctor')).done((corpus, doctor) => {
+        $.when(this._api.get('corpus'), this._api.get('doctor'), this._api.get('sources')).done((corpus, doctor, sources) => {
+            this._renderFlight(corpus[0].specs, sources[0].sources || []);
             this._render(corpus[0], doctor[0]);
         });
+    }
+
+    _renderFlight(specs, sources) {
+        let active = specs.filter((spec) => spec.place === 'active').sort((left, right) => left.number.localeCompare(right.number));
+        this._.flightList.clear();
+        this._.flightTitle.text(active.length
+            ? this._t('In flight · {count}').replace('{count}', active.length)
+            : this._t('In flight'));
+        if (!active.length) {
+            let outlets = this._.flightList.buildListItem(
+                0, 'none', {}, {statusLabel: {}, nameLabel: {}, ageLabel: {}, nextLabel: {}, reposLabel: {}}, 0);
+            outlets.statusLabel.hide();
+            outlets.nameLabel.text(this._t('Nothing in flight.'));
+            outlets.nextLabel.text(this._t('The backlog says what comes next.'));
+            return;
+        }
+        let byName = new Map(sources.map((source) => [source.name, source]));
+        active.forEach((spec) => {
+            let outlets = this._.flightList.buildListItem(
+                0, spec.name, spec, {statusLabel: {}, nameLabel: {}, ageLabel: {}, nextLabel: {}, reposLabel: {}},
+                this._.flightList.count(), (key) => this.dispatchEvent(this.specChosen.name, {spec: key}));
+            outlets.statusLabel.text(spec.status || this._t('active'));
+            outlets.nameLabel.text(`SPEC_${spec.number} — ${spec.title}`);
+            outlets.ageLabel.text(this._age(spec));
+            let next = spec.handoff && (spec.handoff.Blocked || spec.handoff.Next);
+            outlets.nextLabel.text(next ? `${spec.handoff.Blocked ? this._t('Blocked') : this._t('Next')}: ${next}` : '');
+            outlets.nextLabel.toggleClass('is-blocked', Boolean(spec.handoff && spec.handoff.Blocked));
+            outlets.reposLabel.text(spec.repos.map((repo) => this._repoState(repo, spec.number, byName)).join('   ·   '));
+        });
+    }
+
+    _age(spec) {
+        let since = spec.started || spec.created;
+        if (!since) return '';
+        let days = Math.max(0, Math.round((Date.now() - Date.parse(`${since}T00:00:00`)) / DAY));
+        let label = spec.started ? this._t('started') : this._t('created');
+        if (days === 0) return `${label} ${this._t('today')}`;
+        return `${label} ${days === 1 ? this._t('yesterday') : this._t('{days} days ago').replace('{days}', days)}`;
+    }
+
+    _repoState(repo, number, byName) {
+        let source = byName.get(repo);
+        if (!source || source.branch === null) return repo;
+        let onBranch = source.branch.startsWith(`spec/${number}-`);
+        let where = onBranch ? this._t('on its branch') : this._t('on {branch}').replace('{branch}', source.branch);
+        let changes = source.changes ? this._t('{count} changed').replace('{count}', source.changes) : this._t('clean');
+        return `${repo}: ${where}, ${changes}`;
     }
 
     _render(corpus, doctor) {
@@ -73,7 +124,15 @@ export class OverviewPlugster extends Plugster {
             outlets.kindLabel.text(finding.kind).addClass(`is-${finding.kind}`);
             outlets.subjectLabel.text(finding.detail ? `${finding.subject}: ${finding.detail}` : finding.subject);
         });
-        if (!doctorCount) {
+        this._dataNotes(specs, corpus.unrecognized || []).forEach((note) => {
+            let outlets = this._.attentionList.buildListItem(
+                0, `data-${note.key}`, note, {kindLabel: {}, subjectLabel: {}}, this._.attentionList.count(),
+                (key, data) => this.dispatchEvent(this.viewChosen.name, {view: 'specs', filter: data.filter}));
+            outlets.kindLabel.text(this._t('data')).addClass('is-data');
+            outlets.subjectLabel.text(note.text);
+            outlets.root.attr('title', note.title);
+        });
+        if (!this._.attentionList.count()) {
             let outlets = this._.attentionList.buildListItem(
                 0, 'clear', {}, {kindLabel: {}, subjectLabel: {}}, 0);
             outlets.kindLabel.text(this._t('ok')).addClass('is-ok');
@@ -89,6 +148,35 @@ export class OverviewPlugster extends Plugster {
                 outlets.nameLabel.text(`SPEC_${spec.number} — ${spec.title}`);
                 outlets.whenLabel.text(spec.closed);
             });
+    }
+
+    // What the page cannot show because the Atlas's files predate it: said, never fixed.
+    _dataNotes(specs, unrecognized) {
+        let notes = [];
+        let unclosed = specs.filter((spec) => spec.place === 'archived' && !spec.closed).length;
+        if (unclosed) {
+            notes.push({
+                key: 'closed', filter: {place: 'archived'},
+                text: this._t('{count} archived SPECs have no closed: date').replace('{count}', unclosed),
+                title: this._t('They are listed and searchable, but stay out of lead time, the timeline and Recently closed.')
+            });
+        }
+        let undated = specs.filter((spec) => !spec.created).length;
+        if (undated) {
+            notes.push({
+                key: 'created', filter: null,
+                text: this._t('{count} SPECs have no created: date').replace('{count}', undated),
+                title: this._t('They are listed and searchable, but have no created event in the timeline.')
+            });
+        }
+        if (unrecognized.length) {
+            notes.push({
+                key: 'names', filter: null,
+                text: this._t('Not shown, not named SPEC_NNNN_SLUG.md: {files}').replace('{files}', unrecognized.join(', ')),
+                title: unrecognized.join('\n')
+            });
+        }
+        return notes;
     }
 
     toggleView(args) {

@@ -6,6 +6,8 @@
     <title>Atlas</title>
     <link rel="stylesheet" href="/static/atlas.css">
     <script src="/static/jquery.min.js"></script>
+    <script src="/static/echarts.min.js"></script>
+    <script src="/static/markdown-it.min.js"></script>
 </head>
 <body class="c-app">
 
@@ -14,7 +16,8 @@
        data-on-paletteplugster-viewchosen="show"
        data-on-paletteplugster-specchosen="showSpecs"
        data-on-overviewplugster-viewchosen="show"
-       data-on-overviewplugster-specchosen="showSpecs">
+       data-on-overviewplugster-specchosen="showSpecs"
+       data-on-timelineplugster-specchosen="showSpecs">
     <div class="c-brand" data-outlet-id="atlasName">Atlas</div>
     <nav class="c-views" data-outlet-id="viewsList"
          data-child-templates='["/static/shell-view-link.html"]'></nav>
@@ -40,6 +43,11 @@
     <section id="overview" class="c-view" data-controller-name="OverviewPlugster" data-lang="en"
              data-on-shellplugster-viewshown="toggleView"
              data-on-refreshplugster-atlaschanged="reload">
+        <article class="c-card c-flight" data-outlet-id="flightCard">
+            <h2 data-outlet-id="flightTitle">In flight</h2>
+            <div data-outlet-id="flightList"
+                 data-child-templates='["/static/overview-active-card.html"]'></div>
+        </article>
         <div class="c-kpis" data-outlet-id="kpiList"
              data-child-templates='["/static/overview-kpi.html"]'></div>
         <div class="c-grid-2">
@@ -59,7 +67,19 @@
     <section id="timeline" class="c-view" data-controller-name="TimelinePlugster" data-lang="en"
              data-on-shellplugster-viewshown="toggleView"
              data-on-refreshplugster-atlaschanged="reload">
-        <p class="c-placeholder" data-outlet-id="placeholderLabel">The activity timeline comes in the next release.</p>
+        <div class="c-toolbar">
+            <div class="c-segmented" data-outlet-id="rangeSwitch"
+                 data-child-templates='["/static/timeline-range-button.html"]'></div>
+            <select data-outlet-id="repoSelect"
+                    data-child-templates='["/static/specs-repo-option.html"]'></select>
+            <span class="c-muted" data-outlet-id="summaryLabel"></span>
+        </div>
+        <article class="c-card c-chart-card">
+            <div class="c-chart" data-outlet-id="dayChart"></div>
+        </article>
+        <p class="c-placeholder" data-outlet-id="emptyLabel"></p>
+        <div class="c-feed" data-outlet-id="feedList"
+             data-child-templates='["/static/timeline-day-row.html", "/static/timeline-event-row.html"]'></div>
     </section>
 
     <section id="health" class="c-view" data-controller-name="DoctorPlugster" data-lang="en"
@@ -82,46 +102,50 @@
              data-on-refreshplugster-atlaschanged="reload"
              data-on-paletteplugster-specchosen="open"
              data-on-overviewplugster-specchosen="open"
+             data-on-timelineplugster-specchosen="open"
              data-on-overviewplugster-viewchosen="applyFilter">
-        <div class="c-filters">
-                <input type="search" placeholder="Search SPECs and findings" data-outlet-id="searchInput">
-            <select data-outlet-id="placeSelect">
-                <option value="">Every place</option>
-                <option value="active">Active</option>
-                <option value="backlog">Backlog</option>
-                <option value="archived">Archived</option>
-                <option value="unplaced">Unplaced</option>
-            </select>
-            <select data-outlet-id="repoSelect"
-                    data-child-templates='["/static/specs-repo-option.html"]'></select>
-            <select data-outlet-id="modeSelect">
-                <option value="">Every mode</option>
-                <option value="paired">Paired</option>
-                <option value="delegated">Delegated</option>
-                <option value="(default)">Atlas default</option>
-            </select>
-            <select data-outlet-id="findingsSelect">
-                <option value="">With or without findings</option>
-                <option value="with">With findings</option>
-            </select>
+        <div class="c-specs-frame">
+            <div class="c-filters">
+                    <input type="search" placeholder="Search SPECs and findings" data-outlet-id="searchInput">
+                <select data-outlet-id="placeSelect">
+                    <option value="">Every place</option>
+                    <option value="active">Active</option>
+                    <option value="backlog">Backlog</option>
+                    <option value="archived">Archived</option>
+                    <option value="unplaced">Unplaced</option>
+                </select>
+                <select data-outlet-id="repoSelect"
+                        data-child-templates='["/static/specs-repo-option.html"]'></select>
+                <select data-outlet-id="modeSelect">
+                    <option value="">Every mode</option>
+                    <option value="paired">Paired</option>
+                    <option value="delegated">Delegated</option>
+                    <option value="(default)">Atlas default</option>
+                </select>
+                <select data-outlet-id="findingsSelect">
+                    <option value="">With or without findings</option>
+                    <option value="with">With findings</option>
+                </select>
+                <button type="button" class="c-clear-filters" data-outlet-id="clearAllButton">Clear filters</button>
+            </div>
+            <div class="c-filter-bar" data-outlet-id="filterBar">
+                <span data-outlet-id="filterLabel"></span>
+                <button type="button" class="c-link-button" data-outlet-id="clearFilterButton">Clear</button>
+            </div>
+            <p class="c-muted" data-outlet-id="countLabel"></p>
+            <div class="c-specs">
+                <div class="c-spec-list" data-outlet-id="specsList"
+                     data-child-templates='["/static/specs-row.html"]'></div>
+                <div class="c-spec-empty" data-outlet-id="detailEmpty">Choose a SPEC to read it here.</div>
+                <article class="c-spec-detail" data-outlet-id="detailPanel">
+                    <h3 data-outlet-id="detailTitle"></h3>
+                    <p class="c-muted" data-outlet-id="detailMeta"></p>
+                    <div data-outlet-id="detailSections"
+                         data-child-templates='["/static/specs-section.html"]'></div>
+                </article>
+            </div>
+            <p class="c-muted" data-outlet-id="unreadableLabel"></p>
         </div>
-        <div class="c-filter-bar" data-outlet-id="filterBar">
-            <span data-outlet-id="filterLabel"></span>
-            <button type="button" class="c-link-button" data-outlet-id="clearFilterButton">Clear</button>
-        </div>
-        <p class="c-muted" data-outlet-id="countLabel"></p>
-        <div class="c-specs">
-            <div class="c-spec-list" data-outlet-id="specsList"
-                 data-child-templates='["/static/specs-row.html"]'></div>
-            <div class="c-spec-empty" data-outlet-id="detailEmpty">Choose a SPEC to read it here.</div>
-            <article class="c-spec-detail" data-outlet-id="detailPanel">
-                <h3 data-outlet-id="detailTitle"></h3>
-                <p class="c-muted" data-outlet-id="detailMeta"></p>
-                <div data-outlet-id="detailSections"
-                     data-child-templates='["/static/specs-section.html"]'></div>
-            </article>
-        </div>
-        <p class="c-muted" data-outlet-id="unreadableLabel"></p>
     </section>
 
     <section id="rules" class="c-view" data-controller-name="RulesPlugster" data-lang="en"
