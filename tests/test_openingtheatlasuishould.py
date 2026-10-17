@@ -331,3 +331,40 @@ def test_serve_the_page_scripts_as_javascript_and_the_templates_as_html(monkeypa
 
     assert script == "application/javascript; charset=utf-8"
     assert template == "text/html; charset=utf-8"
+
+
+def test_serve_every_request_of_a_burst(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    paths = ["/", "/api/doctor", "/api/status", "/api/corpus", "/api/version", "/api/machinery",
+             "/static/plugster.js", "/static/minisearch.js", "/static/jquery.min.js",
+             "/static/doctor-plugster.js", "/static/specs-plugster.js", "/static/stats-bar.html",
+             "/static/atlas.css", "/static/refresh-plugster.js", "/static/atlas-api.js",
+             "/static/doctor-finding-card.html"] * 4
+    with EphemeralAtlasContext(git_sources=[], plain_sources=["notes"]) as world:
+        atlas = _make_atlas(world, monkeypatch, "notes")
+        with _server_context(atlas, 0) as (port, _server):
+            with ThreadPoolExecutor(len(paths)) as pool:
+                codes = list(pool.map(lambda path: _get(f"http://127.0.0.1:{port}{path}")[0], paths))
+
+    assert len(paths) == 64
+    assert codes == [200] * 64
+
+
+def test_answer_several_requests_on_one_connection(monkeypatch):
+    import http.client
+
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        monkeypatch.chdir(world.atlas)
+        assert main(["init"]) == 0
+        with _server_context(world.atlas, 0) as (port, _server):
+            connection = http.client.HTTPConnection("127.0.0.1", port)
+            answers = []
+            for path in ("/api/version", "/static/atlas.css", "/api/doctor"):
+                connection.request("GET", path)
+                response = connection.getresponse()
+                response.read()
+                answers.append((response.status, response.version))
+            connection.close()
+
+    assert answers == [(200, 11)] * 3
