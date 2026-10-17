@@ -3,9 +3,11 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from atlas_cli.atlascorpus import fingerprint, read_corpus
+from atlas_cli.atlassources import read_sources
+from atlas_cli.atlastimeline import read_timeline
 from atlas_cli.atlasfiles import ATLAS_TOML
 from atlas_cli.commands import doctor, setup, status
 
@@ -93,7 +95,9 @@ class AtlasUIHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         self._responded = False
         try:
-            self._route(urlsplit(self.path).path.rstrip("/") or "/")
+            parts = urlsplit(self.path)
+            self._query = parse_qs(parts.query)
+            self._route(parts.path.rstrip("/") or "/")
         except ConnectionError:
             pass  # the browser went away
         except Exception as error:  # a file that can't be read must not drop the request
@@ -158,6 +162,10 @@ class AtlasUIHandler(BaseHTTPRequestHandler):
             self._version_json()
         elif path == "/api/machinery":
             self._json_response(setup.machinery_state())
+        elif path == "/api/sources":
+            self._json_response(read_sources(self.server.atlas_folder))
+        elif path == "/api/timeline":
+            self._timeline_json()
         else:
             self._not_found()
 
@@ -173,11 +181,23 @@ class AtlasUIHandler(BaseHTTPRequestHandler):
         code, lines = status.status_lines(self.server.atlas_folder)
         self._json_response({"code": code, "text": "\n".join(lines)})
 
+    def _timeline_json(self) -> None:
+        wanted = self._query.get("days", ["14"])[0]
+        if wanted == "all":
+            days = None
+        else:
+            try:
+                days = min(max(1, int(wanted)), 3650)
+            except ValueError:
+                days = 14
+        self._json_response(read_timeline(self.server.atlas_folder, days))
+
     def _corpus_json(self) -> None:
         self._json_response(read_corpus(self.server.atlas_folder))
 
     def _version_json(self) -> None:
-        self._json_response({"version": fingerprint(self.server.atlas_folder, setup.config_folder())})
+        folder = self.server.atlas_folder
+        self._json_response({"version": fingerprint(folder, setup.config_folder()), "name": folder.resolve().name})
 
     def _json_response(self, data: object, code: int = 200) -> None:
         body = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")

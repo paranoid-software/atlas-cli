@@ -145,7 +145,7 @@ def test_serve_the_page_and_its_static_files_with_their_types(monkeypatch):
 
             status_code, body, headers = _get(f"{base}/static/atlas.css")
             assert status_code == 200
-            assert "font: 15px/1.5 system-ui" in body
+            assert "system-ui" in body and "--panel" in body
             assert headers.get("Content-Type") == "text/css; charset=utf-8"
             assert headers.get("Cache-Control") == "no-store"
 
@@ -338,7 +338,7 @@ def test_serve_every_request_of_a_burst(monkeypatch):
 
     paths = ["/", "/api/doctor", "/api/status", "/api/corpus", "/api/version", "/api/machinery",
              "/static/plugster.js", "/static/minisearch.js", "/static/jquery.min.js",
-             "/static/doctor-plugster.js", "/static/specs-plugster.js", "/static/stats-bar.html",
+             "/static/doctor-plugster.js", "/static/specs-plugster.js", "/static/overview-kpi.html",
              "/static/atlas.css", "/static/refresh-plugster.js", "/static/atlas-api.js",
              "/static/doctor-finding-card.html"] * 4
     with EphemeralAtlasContext(git_sources=[], plain_sources=["notes"]) as world:

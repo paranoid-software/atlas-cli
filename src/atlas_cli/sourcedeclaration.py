@@ -43,9 +43,19 @@ def declared_repos(table: object) -> dict[str, str | None]:
         return {}
     repos: dict[str, str | None] = {}
     for child, child_table in table["repos"].items():
+        if not _is_plain_name(str(child)):
+            continue  # a hand-edited name like ".." or "a/b" would point outside the folder
         remote = child_table.get("remote") if isinstance(child_table, dict) else None
         repos[str(child)] = remote if isinstance(remote, str) and remote.strip() else None
     return repos
+
+
+def _is_plain_name(name: str) -> bool:
+    try:
+        check_source_name(name)
+    except ValueError:
+        return False
+    return True
 
 
 def check_source_name(name: str) -> None:

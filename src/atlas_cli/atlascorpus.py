@@ -57,11 +57,31 @@ def fingerprint(folder: Path, machinery: Path | None = None) -> str:
     for entry in folder.iterdir():
         if entry.is_symlink():
             entries.append((f"link:{entry.name}", str(entry.readlink()), entry.exists()))
+            for git_dir in _git_dirs(entry):
+                for marker in ("HEAD", "index", "packed-refs"):
+                    entries.append(_stat(f"git:{git_dir.relative_to(folder)}/{marker}", git_dir / marker))
+                heads = git_dir / "refs" / "heads"
+                if heads.is_dir():
+                    for ref in heads.rglob("*"):
+                        if ref.is_file():
+                            entries.append(_stat(f"git:{ref.relative_to(folder)}", ref))
     if machinery is not None and machinery.is_dir():
         for path in sorted(machinery.rglob("*")):
             if path.is_file() and path.suffix in {".sh", ".md", ".json"}:
                 entries.append(_stat(f"machinery:{path.relative_to(machinery)}", path))
     return hashlib.sha256(repr(sorted(entries, key=repr)).encode("utf-8")).hexdigest()
+
+
+def _git_dirs(source: Path) -> list[Path]:
+    """The .git folders a source holds: its own, or its direct children's for a folder of repos."""
+    try:
+        if (source / ".git").is_dir():
+            return [source / ".git"]
+        if source.is_dir():
+            return [child / ".git" for child in sorted(source.iterdir()) if (child / ".git").is_dir()]
+    except OSError:
+        pass
+    return []
 
 
 def _stat(label: str, path: Path) -> tuple:

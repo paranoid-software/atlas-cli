@@ -269,7 +269,7 @@ def _paused_lines(folder: Path, names: list[str]) -> list[str]:
 
 def _run_git(source: Path, args: list[str]) -> str | None:
     result = subprocess.run(
-        ["git", "-C", str(source), *args],
+        ["git", "--no-optional-locks", "-C", str(source), *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
