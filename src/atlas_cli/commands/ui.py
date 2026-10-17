@@ -42,7 +42,13 @@ def run(args) -> int:
 
 
 class AtlasUIServer(ThreadingHTTPServer):
-    """The local server; it knows the Atlas it serves."""
+    """The local server; it knows the Atlas it serves.
+
+    A tunnel's forwarder opens many connections at once: the standard library keeps only 5
+    waiting, and the rest are reset.
+    """
+
+    request_queue_size = 128
 
     def __init__(self, folder: Path, port: int):
         self.atlas_folder = folder
@@ -80,6 +86,9 @@ def _content_type(name: str) -> str:
 
 
 class AtlasUIHandler(BaseHTTPRequestHandler):
+    # Keep-alive: the page's ~30 files reuse a few connections instead of one each.
+    protocol_version = "HTTP/1.1"
+    timeout = 30
 
     def do_GET(self) -> None:
         self._responded = False
@@ -96,9 +105,11 @@ class AtlasUIHandler(BaseHTTPRequestHandler):
         super().send_response(code, message)
 
     def _refuse_method(self) -> None:
+        self.close_connection = True  # a refused request's body is never read, so the connection can't be reused
         self.send_response(405)
         self.send_header("Allow", "GET")
         self.send_header("Content-Length", "0")
+        self.send_header("Connection", "close")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
 
