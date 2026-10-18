@@ -379,3 +379,23 @@ def test_point_an_atlas_of_the_older_model_to_migrate(monkeypatch, capsys):
 
     assert code == 1
     assert "atlas migrate" in capsys.readouterr().out
+
+
+def test_stay_quiet_when_the_browser_drops_an_idle_connection(monkeypatch, capsys):
+    import socket
+    import struct
+    import time
+
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        monkeypatch.chdir(world.atlas)
+        assert main(["init"]) == 0
+        with _server_context(world.atlas, 0) as (port, _server):
+            connection = socket.create_connection(("127.0.0.1", port))
+            connection.sendall(b"GET /api/version HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+            assert connection.recv(4096).startswith(b"HTTP/1.1 200")
+            # A reset, not a close: what a browser does with a spare keep-alive connection.
+            connection.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+            connection.close()
+            time.sleep(0.3)
+
+    assert capsys.readouterr().err == ""
