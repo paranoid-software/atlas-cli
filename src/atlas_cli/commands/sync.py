@@ -49,8 +49,8 @@ def sync(folder: Path, check: bool = False, today: date | None = None) -> tuple[
     lines.extend(_indent([description for description, _apply_one in writes]))
     try:
         findings = lint(folder)  # after the writes, so it reports what is left for judgment
-    except OSError as error:
-        findings = [f"cannot lint: {error}"]
+    except (OSError, UnicodeDecodeError) as error:
+        findings = [f"cannot lint: {getattr(error, 'strerror', None) or error}"]
     if check:
         fixable = {f"{name}: archived but still in STATUS.md Active" for name in _closing(writes)} | {f"{name}: archived without closed:" for name in _stamping(writes)}
         findings = [finding if finding not in fixable else f"{finding} (sync would fix it)" for finding in findings]
@@ -58,7 +58,11 @@ def sync(folder: Path, check: bool = False, today: date | None = None) -> tuple[
     lines.extend(_indent(findings))
     lines.append("reports")
     lines.extend(_indent(reports))
-    _code, status = status_lines(folder)
+    try:
+        _code, status = status_lines(folder)
+    except (OSError, UnicodeDecodeError) as error:
+        status = [f"cannot read the Atlas's files of record ({getattr(error, 'strerror', None) or error})"]
+        broken = True
     lines.append("status")
     lines.extend(_indent(status))
     if check:
@@ -70,9 +74,13 @@ def _plan(folder: Path, stamp: str) -> tuple[list[tuple[str, object]], list[str]
     """What sync would write, as (description, action), and what it only reports."""
     writes: list[tuple[str, object]] = []
     reports: list[str] = []
-    active = read_active(folder)
+    try:
+        active = read_active(folder)
+        backlog = read_backlog(folder)
+    except (OSError, UnicodeDecodeError) as error:
+        reports.append(f"STATUS.md or BACKLOG.md cannot be read ({getattr(error, 'strerror', None) or error}); nothing is written until it can")
+        return writes, reports
     active_names = {spec["name"] for spec in active}
-    backlog = read_backlog(folder)
     root = _spec_names(folder)
     archived = _spec_names(folder / ARCHIVED)
     unreadable: set[str] = set()

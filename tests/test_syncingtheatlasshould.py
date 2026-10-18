@@ -243,3 +243,29 @@ def test_report_a_spec_that_is_not_utf8_and_lint_the_others(monkeypatch, capsys)
     assert code == 1
     assert f"{_SPEC}: cannot be read" in out
     assert "SPEC_0002_OLD: a checkbox" in out
+
+
+def test_report_an_unreadable_status_and_write_nothing(monkeypatch, capsys):
+    import os
+    import stat
+
+    if os.name == "nt" or os.geteuid() == 0:
+        return
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        (atlas / "_archived" / "SPEC_0002_OLD.md").write_text("# SPEC_0002_OLD\ncreated: 2026-01-01\n\n## What\nx\n", encoding="utf-8", newline="\n")
+        status = atlas / "STATUS.md"
+        status.chmod(0)
+        try:
+            before = {p: p.read_bytes() for p in atlas.rglob("*.md") if p != status}
+            capsys.readouterr()
+            code = main(["sync"])
+            out = _out(capsys)
+            after = {p: p.read_bytes() for p in atlas.rglob("*.md") if p != status}
+        finally:
+            status.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+    assert code == 1
+    assert after == before
+    assert "STATUS.md or BACKLOG.md cannot be read" in out
+    assert "lint\n  SPEC_0002_OLD: archived without closed:" in out or "STATUS.md: cannot be read" in out

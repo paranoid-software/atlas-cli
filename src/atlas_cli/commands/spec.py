@@ -108,6 +108,9 @@ def run_lint(args) -> int:
     except Refusal as refusal:
         print(f"{refusal}.")
         return 1
+    except (OSError, UnicodeDecodeError) as error:
+        print(f"A file could not be read ({getattr(error, 'strerror', None) or error}).")
+        return 1
     for line in problems:
         print(line)
     return 1 if problems else 0
@@ -260,8 +263,12 @@ def lint(folder: Path, name: str | None = None) -> list[str]:
         specs = [spec for spec in specs if spec[0] == name]
         if not specs:
             raise Refusal(f"{name} is not at the root nor in {ARCHIVED}/")
-    active = {spec["name"] for spec in read_active(folder)}
     problems: list[str] = []
+    try:
+        active = {spec["name"] for spec in read_active(folder)}
+    except (OSError, UnicodeDecodeError) as error:
+        active = set()
+        problems.append(f"STATUS.md: cannot be read ({getattr(error, 'strerror', None) or error}), so Active was not checked")
     for spec_name, place, path in specs:
         try:
             text = read_atlas_file(path)
