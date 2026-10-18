@@ -431,3 +431,15 @@ def test_refuse_to_lint_a_spec_that_is_nowhere(monkeypatch, capsys):
         assert main(["spec", "lint", "SPEC_0009_NOWHERE"]) == 1
 
         assert "is not at the root nor in _archived/" in capsys.readouterr().out
+
+
+def test_place_the_first_block_cleanly_after_an_empty_active_section(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        _new(atlas, capsys)
+        status = atlas / "STATUS.md"
+        status.write_text(status.read_text(encoding="utf-8").replace("never appended)_\n", "never appended)_\n\n_(none)_\n"), encoding="utf-8", newline="\n")
+
+        assert main(["spec", "start", _SPEC]) == 0
+
+        assert f"never appended)_\n\n### {_SPEC} — IN PROGRESS\n- **Done:** —\n- **Next:** step 1\n\n## Recently closed" in status.read_text(encoding="utf-8")

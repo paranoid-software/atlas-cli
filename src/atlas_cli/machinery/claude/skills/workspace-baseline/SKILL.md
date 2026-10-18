@@ -30,7 +30,7 @@ Returns the Atlas framework:
 ## Step 2 — apply per the framework
 
 - **Bootstrapping a new Atlas** → follow the recipe (`method/06-bootstrap.md`).
-- **Modifying any Atlas root file of record** (`CLAUDE.md`, `STATUS.md`, `BACKLOG.md`, `SPEC_*.md`, `DRAFT_*.md`, `_archived/`, and the plugin files `CODING_RULES_CANDIDATES.md` / `CODING_RULES_DEVIATIONS.md`) → consult the stores model / anatomy (`method/02`, `method/03`) for what goes in each. `STATUS.md` = the living "where we are", injected at session start by the `session-orient.sh` hook; CLAUDE.md = static orientation/why.
+- **Modifying any Atlas root file of record** (`CLAUDE.md`, `STATUS.md`, `BACKLOG.md`, `SPEC_*.md`, `DRAFT_*.md`, `_archived/`, and the plugin files `CODING_RULES_CANDIDATES.md` / `CODING_RULES_DEVIATIONS.md`) → consult the stores model / anatomy (`method/02`, `method/03`) for what goes in each. `STATUS.md` = the living "where we are" (one section of what `atlas orient` prints and the `session-orient.sh` hook injects at session start); CLAUDE.md = static orientation/why. The lifecycle's transitions are `atlas spec`'s, the checkpoint's mechanics `atlas sync`'s.
 - **Before writing any code**, place yourself in the cadence (`method/05-discipline.md`): is there a SPEC in `STATUS → Active`, and are you on its branch? Read its `mode:` (or the Atlas default) and act in your role. Check the other drift signals in `05` too. If one shows, say so once and follow the human's call. Follow the rules of the environment you run in; with none, ask before installing anything.
 - **If the Atlas declares `coding-rules`** (`[plugins.coding-rules]` in `_settings/atlas.toml`), recall the rules from its source before writing code; candidate rules go to `CODING_RULES_CANDIDATES.md`, never straight to the source.
 - **Deciding where a piece of knowledge belongs** → use the decision tree in the stores model (`method/02-stores-model.md`).
@@ -40,9 +40,9 @@ Returns the Atlas framework:
 Two user-global slash commands operate on an Atlas; both are thin wrappers that fetch and follow the canonical recipe/model in the Atlas framework (`atlas-fetch.sh`):
 
 - **`/atlas-init`** — create an Atlas with the CLI (`atlas init`, or `atlas migrate` for an older one), add its sources with `atlas link`, then write their orientation blocks with the human.
-- **`/atlas-sync`** — checkpoint an existing Atlas: reconcile its sources with `atlas doctor` / `atlas link` (and `atlas unlink`, with the human's approval, for a source that is gone), refresh `STATUS.md` starting from `atlas status` (Active blocks Done / Next / Blocked; closed SPECs to Recently closed), lint SPECs for contamination, and update `CLAUDE.md` only if a standing fact changed.
+- **`/atlas-sync`** — checkpoint an existing Atlas: run `atlas sync` (doctor, lint, missing stamps, a closed SPEC out of Active, `atlas status`), reconcile the sources it reports with `atlas link` (and `atlas unlink`, with the human's approval, for a source that is gone), rewrite each Active block's Done / Next / Blocked, and update `CLAUDE.md` only if a standing fact changed.
 
-Memory mechanism: a `SessionStart` hook (`session-orient.sh`) injects `STATUS.md` at start; a `Stop` hook (`atlas-sync-reminder.sh`) nudges the agent to offer `/atlas-sync` when `STATUS.md` goes stale (throttled). There is no automatic write — checkpointing is deliberate.
+Memory mechanism: a `SessionStart` hook (`session-orient.sh`) injects `atlas orient`'s output at start — the method's orientation, the coding rules in force, `atlas status` and `STATUS.md`; a `Stop` hook (`atlas-sync-reminder.sh`) nudges the agent to offer `/atlas-sync` when `STATUS.md` goes stale (throttled). There is no automatic write — checkpointing is deliberate.
 
 ## Naming
 
