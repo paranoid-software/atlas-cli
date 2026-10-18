@@ -41,9 +41,7 @@ def run(args) -> int:
     else:
         for line in _render(report):
             print(line)
-    if report["findings"]:
-        return 1
-    return 0
+    return 0 if report["ok"] else 1
 
 
 def diagnose(folder: Path) -> dict:
@@ -82,7 +80,7 @@ def diagnose(folder: Path) -> dict:
                 fix=[f"atlas link {shlex.quote(entry.name)} {shlex.quote(str(entry.readlink()))}"],
             )
         )
-    return {"ok": not findings, "sources": sources, "findings": findings}
+    return {"ok": not any(finding["level"] == "problem" for finding in findings), "sources": sources, "findings": findings}
 
 
 def _source_state(folder: Path, name: str, state: str, repos: dict[str, str | None]) -> dict:
@@ -201,8 +199,19 @@ def _remote(table: object) -> str | None:
     return remote
 
 
+NOTICES = {"rules"}
+RULES_NOTICE = "a notice, not a problem: that source's own context, read with caution; the Atlas and the coding rules prevail, a contradiction goes to the human"
+
+
 def _finding(kind: str, subject: str, detail: str | None = None, fix: list[str] | None = None) -> dict:
-    return {"kind": kind, "subject": subject, "detail": detail, "fix": [] if fix is None else list(fix)}
+    """A problem keeps the Atlas from healthy until fixed; a notice is something to know."""
+    return {
+        "kind": kind,
+        "level": "notice" if kind in NOTICES else "problem",
+        "subject": subject,
+        "detail": detail,
+        "fix": [] if fix is None else list(fix),
+    }
 
 
 def _render(report: dict) -> list[str]:
@@ -242,7 +251,9 @@ def _render_finding(finding: dict) -> list[str]:
         line = f"broken {subject} -> {detail}"
     elif kind == "credentials":
         line = f"credentials {subject} -> {detail}"
-    elif kind in {"rules", "placeholder"}:
+    elif kind == "rules":
+        return [f"rules {subject}: {detail}", f"  {RULES_NOTICE}"]
+    elif kind == "placeholder":
         line = f"{kind} {subject}: {detail}"
     else:
         line = f"{kind} {subject}"

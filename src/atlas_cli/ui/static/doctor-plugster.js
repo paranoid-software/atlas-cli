@@ -27,18 +27,22 @@ export class DoctorPlugster extends Plugster {
         this._report = report;
         this._.kindSwitch.clear();
         this._.findingsList.clear();
-        this._.summaryLabel.removeClass('is-ok is-bad');
+        this._.summaryLabel.removeClass('is-ok is-warn is-bad');
         this._.findingsHead.toggle(!report.error && report.findings.length > 0);
         if (report.error) {
             this._.summaryLabel.addClass('is-bad').text(report.error);
             return;
         }
-        if (report.ok) {
-            this._.summaryLabel.addClass('is-ok').text(this._t('Everything is in order.'));
+        let problems = report.findings.filter((finding) => finding.level !== 'notice').length;
+        let notices = report.findings.length - problems;
+        if (problems) {
+            let text = problems === 1 ? this._t('1 thing needs attention.') : this._t('{count} things need attention.');
+            this._.summaryLabel.addClass('is-bad').text(text.replace('{count}', problems));
+        } else if (notices) {
+            let text = notices === 1 ? this._t('Everything is in order; 1 notice.') : this._t('Everything is in order; {count} notices.');
+            this._.summaryLabel.addClass('is-warn').text(text.replace('{count}', notices));
         } else {
-            let count = report.findings.length;
-            let text = count === 1 ? this._t('1 thing needs attention.') : this._t('{count} things need attention.');
-            this._.summaryLabel.addClass('is-bad').text(text.replace('{count}', count));
+            this._.summaryLabel.addClass('is-ok').text(this._t('Everything is in order.'));
         }
         let kinds = [...new Set(report.findings.map((finding) => finding.kind))];
         if (!kinds.includes(this._kind)) this._kind = '';
@@ -64,6 +68,7 @@ export class DoctorPlugster extends Plugster {
             0, `finding-${index}`, finding,
             {titleLabel: {}, whyLabel: {}, detailLabel: {}, fixLabel: {}},
             this._.findingsList.count());
+        card.root.toggleClass('is-notice', finding.level === 'notice');
         card.titleLabel.text(words.title);
         card.whyLabel.text(words.why);
         card.detailLabel.text(finding.detail || '');
@@ -107,9 +112,9 @@ export class DoctorPlugster extends Plugster {
                 fixWith: 'Declare it:'
             },
             rules: {
-                title: '{subject} carries agent rule files',
-                why: 'Rule files inside a source leak into every Atlas that links it.',
-                fixBy: 'Move what they say into this Atlas\'s CLAUDE.md and remove them from the source.'
+                title: 'Notice: {subject} carries its own rule files',
+                why: 'Tools load them on their own when working inside that source. They are its context, not this Atlas\'s rules.',
+                fixBy: 'Read them with caution. Where they contradict the Atlas or the coding rules, the Atlas and the coding rules prevail, and the contradiction is a decision for the human. Nothing to fix.'
             },
             unoriented: {
                 title: '{subject} has no orientation block',

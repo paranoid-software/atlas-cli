@@ -179,9 +179,9 @@ def test_doctor_flags_rule_files_inside_a_nested_repo(monkeypatch, capsys):
         (world.source("infra") / "gke-n8n" / "CLAUDE.md").write_text("rules\n", encoding="utf-8")
         capsys.readouterr()
 
-        assert main(["doctor"]) == 1
+        assert main(["doctor"]) == 0
 
-        assert capsys.readouterr().out == "ok infra\nrules infra/gke-n8n: CLAUDE.md\n"
+        assert capsys.readouterr().out.splitlines()[:2] == ["ok infra", "rules infra/gke-n8n: CLAUDE.md"]
 
 
 def test_status_reports_each_nested_repo_and_the_spec_branch(monkeypatch, capsys):
