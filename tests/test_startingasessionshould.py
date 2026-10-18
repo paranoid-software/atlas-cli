@@ -50,7 +50,8 @@ def test_say_what_each_store_is_for(monkeypatch):
         assert stores.startswith("STORES — ")
         assert "CLAUDE.md at the Atlas root is this project's orientation" in stores
         assert "CODING_RULES_CANDIDATES.md holds rules this Atlas already applies" in stores
-        assert "inside a source is not the Atlas's" in stores
+        assert "A source may carry its own rule files" in stores
+        assert "the Atlas and the coding rules prevail" in stores
 
 
 def test_bring_the_candidate_rules_in_force(monkeypatch):

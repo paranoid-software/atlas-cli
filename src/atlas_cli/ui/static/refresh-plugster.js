@@ -53,17 +53,21 @@ export class RefreshPlugster extends Plugster {
     }
 
     _badge(report) {
-        this._.healthBadge.removeClass('is-ok is-bad');
+        this._.healthBadge.removeClass('is-ok is-warn is-bad');
         if (report.error) {
             this._.healthBadge.addClass('is-bad').text(this.translateTo(this.lang, 'not an Atlas'));
             return;
         }
-        let count = report.findings.length;
-        if (!count) {
+        let problems = report.findings.filter((finding) => finding.level !== 'notice').length;
+        let notices = report.findings.length - problems;
+        if (problems) {
+            let text = problems === 1 ? this.translateTo(this.lang, '1 thing to fix') : this.translateTo(this.lang, '{count} things to fix');
+            this._.healthBadge.addClass('is-bad').text(text.replace('{count}', problems));
+        } else if (notices) {
+            let text = notices === 1 ? this.translateTo(this.lang, 'healthy, 1 notice') : this.translateTo(this.lang, 'healthy, {count} notices');
+            this._.healthBadge.addClass('is-warn').text(text.replace('{count}', notices));
+        } else {
             this._.healthBadge.addClass('is-ok').text(this.translateTo(this.lang, 'healthy'));
-            return;
         }
-        let text = count === 1 ? this.translateTo(this.lang, '1 thing needs attention') : this.translateTo(this.lang, '{count} things need attention');
-        this._.healthBadge.addClass('is-bad').text(text.replace('{count}', count));
     }
 }

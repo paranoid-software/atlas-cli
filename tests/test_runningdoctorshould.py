@@ -205,7 +205,7 @@ def test_refuse_when_the_folder_is_not_an_atlas(tmp_path, monkeypatch, capsys):
     "rule_file",
     ["CLAUDE.md", "CLAUDE.local.md", ".claude/", "AGENTS.md", ".cursorrules"],
 )
-def test_flag_one_rule_file_at_the_source_top_level(monkeypatch, capsys, rule_file):
+def test_notice_one_rule_file_at_the_source_top_level(monkeypatch, capsys, rule_file):
     with EphemeralAtlasContext(git_sources=[], plain_sources=["log-daemon"]) as world:
         atlas = world.atlas
         monkeypatch.chdir(atlas)
@@ -216,9 +216,12 @@ def test_flag_one_rule_file_at_the_source_top_level(monkeypatch, capsys, rule_fi
         _place_rule_file(source, rule_file)
         capsys.readouterr()
 
-        assert main(["doctor"]) == 1
+        assert main(["doctor"]) == 0
 
-        assert capsys.readouterr().out == f"ok log-daemon\nrules log-daemon: {rule_file}\n"
+        assert capsys.readouterr().out == (
+            f"ok log-daemon\nrules log-daemon: {rule_file}\n"
+            "  a notice, not a problem: that source's own context, read with caution; the Atlas and the coding rules prevail, a contradiction goes to the human\n"
+        )
 
 
 def test_list_every_rule_file_in_order(monkeypatch, capsys):
@@ -233,12 +236,12 @@ def test_list_every_rule_file_in_order(monkeypatch, capsys):
             _place_rule_file(source, rule_file)
         capsys.readouterr()
 
-        assert main(["doctor"]) == 1
+        assert main(["doctor"]) == 0
 
-        assert capsys.readouterr().out == (
-            "ok log-daemon\n"
-            "rules log-daemon: CLAUDE.md, CLAUDE.local.md, .claude/, AGENTS.md, .cursorrules\n"
-        )
+        assert capsys.readouterr().out.splitlines()[:2] == [
+            "ok log-daemon",
+            "rules log-daemon: CLAUDE.md, CLAUDE.local.md, .claude/, AGENTS.md, .cursorrules",
+        ]
 
 
 def test_leave_a_clean_source_out_of_the_rules_report(monkeypatch, capsys):
@@ -291,3 +294,22 @@ def test_refuse_unreadable_toml_and_change_nothing(monkeypatch, capsys):
 
         assert _tree(atlas) == before
         assert "nothing was changed" in capsys.readouterr().out
+
+
+def test_stay_healthy_with_a_rule_file_but_not_with_a_problem(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[], plain_sources=["log-daemon", "notes"]) as world:
+        atlas = world.atlas
+        monkeypatch.chdir(atlas)
+        assert main(["init"]) == 0
+        assert main(["link", "log-daemon", str(world.source("log-daemon"))]) == 0
+        assert main(["link", "notes", str(world.source("notes"))]) == 0
+        orient_sources(atlas, "log-daemon", "notes")
+        _place_rule_file(world.source("log-daemon"), "AGENTS.md")
+        capsys.readouterr()
+        assert main(["doctor"]) == 0
+
+        (atlas / "notes").unlink()
+        capsys.readouterr()
+
+        assert main(["doctor"]) == 1
+        assert "missing notes" in capsys.readouterr().out

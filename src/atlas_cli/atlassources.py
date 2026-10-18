@@ -4,10 +4,10 @@ from pathlib import Path
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_toml
 from atlas_cli.sourcedeclaration import declared_repos
 from atlas_cli.sourcegit import describe_repo
-from atlas_cli.sourcestate import judge_source
+from atlas_cli.sourcestate import find_rule_files, judge_source
 
 def _empty() -> dict:
-    return {"branch": None, "changes": None, "last": None, "spec_branches": []}
+    return {"branch": None, "changes": None, "last": None, "spec_branches": [], "rules": []}
 
 
 def read_sources(folder: Path) -> dict:
@@ -39,7 +39,10 @@ def read_sources(folder: Path) -> dict:
 
 def _entry(name: str, state: str, kind: str, path: Path, unreadable: list[str]) -> dict:
     entry = {"name": name, "state": state, "kind": kind, **_empty()}
-    if state != "ok" or kind != "repo":
+    if state != "ok":
+        return entry
+    entry["rules"] = find_rule_files(path)  # the source's own rule files: a notice, shown on its card
+    if kind != "repo":
         return entry
     described = describe_repo(path)
     if described is None:

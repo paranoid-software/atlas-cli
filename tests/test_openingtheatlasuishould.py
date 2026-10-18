@@ -399,3 +399,16 @@ def test_stay_quiet_when_the_browser_drops_an_idle_connection(monkeypatch, capsy
             time.sleep(0.3)
 
     assert capsys.readouterr().err == ""
+
+
+def test_serve_a_healthy_report_with_a_rule_file_notice(monkeypatch):
+    with EphemeralAtlasContext(git_sources=[], plain_sources=["ruled"]) as world:
+        atlas = _make_atlas(world, monkeypatch, "ruled")
+        (world.source("ruled") / "AGENTS.md").write_text("rules\n", encoding="utf-8")
+
+        with _server_context(atlas, 0) as (port, _server):
+            _status, body, _ = _get(f"http://127.0.0.1:{port}/api/doctor")
+
+    report = json.loads(body)
+    assert report["ok"] is True
+    assert [(finding["kind"], finding["level"]) for finding in report["findings"]] == [("rules", "notice")]

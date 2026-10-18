@@ -19,6 +19,7 @@ export class ShellPlugster extends Plugster {
         super(outlets);
         this._api = api;
         this._counts = {};
+        this._notices = 0;
         this.setLocales({});
     }
 
@@ -40,7 +41,9 @@ export class ShellPlugster extends Plugster {
             document.title = `${answer.name} · Atlas`;
         });
         this._api.get('doctor').done((report) => {
-            this._counts.health = report.findings ? report.findings.length : 0;
+            let findings = report.findings || [];
+            this._counts.health = findings.filter((finding) => finding.level !== 'notice').length;
+            this._notices = findings.length - this._counts.health;
             this._renderViews();
         });
         this._api.get('corpus').done((corpus) => {
@@ -94,7 +97,11 @@ export class ShellPlugster extends Plugster {
             outlets.countLabel.text(count ? String(count) : '')
                 .toggleClass('is-bad', view.id !== 'specs' && count > 0)
                 .toggleClass('is-active', view.id === 'specs' && count > 0);
-            outlets.root.attr('title', count ? this._countTitle(view.id, count) : this._t(view.name));
+            let title = count ? this._countTitle(view.id, count) : this._t(view.name);
+            if (view.id === 'health' && this._notices) {
+                title += ` · ${this._notices === 1 ? this._t('1 notice') : this._t('{count} notices').replace('{count}', this._notices)}`;
+            }
+            outlets.root.attr('title', title);
         });
     }
 
