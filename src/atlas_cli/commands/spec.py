@@ -66,6 +66,9 @@ def _run(action, args) -> int:
     except Refusal as refusal:
         print(f"{refusal}; nothing was changed.")
         return 1
+    except (OSError, UnicodeDecodeError) as error:
+        print(f"A file could not be read ({getattr(error, 'strerror', None) or error}); the files of record may be partly written.")
+        return 1
     for line in lines:
         print(line)
     return 0
@@ -105,6 +108,9 @@ def run_lint(args) -> int:
     except Refusal as refusal:
         print(f"{refusal}.")
         return 1
+    except (OSError, UnicodeDecodeError) as error:
+        print(f"A file could not be read ({getattr(error, 'strerror', None) or error}).")
+        return 1
     for line in problems:
         print(line)
     return 1 if problems else 0
@@ -124,7 +130,7 @@ def new(folder: Path, slug: str, summary: str | None, today: date | None = None)
     text = render_template("SPEC.md", name=name, today=(today or date.today()).isoformat())
     _write(path, text.splitlines(), "\n", True)
     line = f"- {name} — {summary or slug.replace('_', ' ').lower()}"
-    backlog = _Document(folder / "BACKLOG.md")
+    backlog = Document(folder / "BACKLOG.md")
     backlog.add_to_section("## Open", line)
     backlog.save()
     return [f"created {path.name}", f"added to BACKLOG.md: {line}"]
@@ -141,14 +147,14 @@ def start(folder: Path, name: str, today: date | None = None) -> list[str]:
         raise Refusal(f"{name}.md is not at the Atlas root")
     done: list[str] = []
     stamp = (today or date.today()).isoformat()
-    if _stamp(path, "started", stamp, after=("created",)):
+    if stamp_header(path, "started", stamp, after=("created",)):
         done.append(f"stamped {path.name}: started: {stamp}")
-    backlog = _Document(folder / "BACKLOG.md")
-    if backlog.remove_from_section("## Open", _backlog_line(name)):
+    backlog = Document(folder / "BACKLOG.md")
+    if backlog.remove_from_section("## Open", line_of(name)):
         backlog.empty_section_placeholder("## Open", "_(empty)_")
         backlog.save()
         done.append(f"removed from BACKLOG.md: {name}")
-    status = _Document(folder / "STATUS.md")
+    status = Document(folder / "STATUS.md")
     status.add_block("## Active", [f"### {name} — IN PROGRESS", "- **Done:** —", "- **Next:** step 1"])
     status.touch(stamp)
     status.save()
@@ -161,7 +167,7 @@ def start(folder: Path, name: str, today: date | None = None) -> list[str]:
 
 def pause(folder: Path, name: str, today: date | None = None) -> list[str]:
     _parse(name)
-    status = _Document(folder / "STATUS.md")
+    status = Document(folder / "STATUS.md")
     block = status.block_lines(name)
     if block is None:
         raise Refusal(f"{name} is not in Active")
@@ -177,7 +183,7 @@ def pause(folder: Path, name: str, today: date | None = None) -> list[str]:
 
 def resume(folder: Path, name: str, today: date | None = None) -> list[str]:
     _parse(name)
-    status = _Document(folder / "STATUS.md")
+    status = Document(folder / "STATUS.md")
     block = status.block_lines(name)
     if block is None:
         raise Refusal(f"{name} is not in Active")
@@ -190,7 +196,7 @@ def resume(folder: Path, name: str, today: date | None = None) -> list[str]:
 
 def review(folder: Path, name: str, today: date | None = None) -> list[str]:
     _parse(name)
-    status = _Document(folder / "STATUS.md")
+    status = Document(folder / "STATUS.md")
     if status.block_lines(name) is None:
         raise Refusal(f"{name} is not in Active")
     status.set_block_status(name, "IN REVIEW")
@@ -212,7 +218,7 @@ def close(folder: Path, name: str, force: bool = False, today: date | None = Non
             raise Refusal(f"{repo} {reason} (--force to close anyway)")
     done: list[str] = list(notes)
     stamp = (today or date.today()).isoformat()
-    if _stamp(path, "closed", stamp, after=("started", "created")):
+    if stamp_header(path, "closed", stamp, after=("started", "created")):
         done.append(f"stamped {path.name}: closed: {stamp}")
     archived = folder / ARCHIVED
     if not archived.is_dir():
@@ -223,16 +229,16 @@ def close(folder: Path, name: str, force: bool = False, today: date | None = Non
         if moving.is_file():
             moving.rename(archived / moving.name)
             done.append(f"moved {moving.name} to {ARCHIVED}/")
-    backlog = _Document(folder / "BACKLOG.md")
-    if backlog.remove_from_section("## Open", _backlog_line(name)):
+    backlog = Document(folder / "BACKLOG.md")
+    if backlog.remove_from_section("## Open", line_of(name)):
         backlog.empty_section_placeholder("## Open", "_(empty)_")
         backlog.save()
         done.append(f"removed from BACKLOG.md: {name}")
-    status = _Document(folder / "STATUS.md")
+    status = Document(folder / "STATUS.md")
     if status.remove_block(name):
         status.empty_section_placeholder("## Active", "_(none)_")
         done.append(f"removed from STATUS.md Active: {name}")
-    status.remove_from_section("## Recently closed", _backlog_line(name))
+    status.remove_from_section("## Recently closed", line_of(name))
     status.add_to_section("## Recently closed", f"- {name} → {ARCHIVED}/ ({stamp})", first=True)
     trimmed = status.trim_section("## Recently closed", RECENT_WINDOW)
     status.touch(stamp)
@@ -257,10 +263,18 @@ def lint(folder: Path, name: str | None = None) -> list[str]:
         specs = [spec for spec in specs if spec[0] == name]
         if not specs:
             raise Refusal(f"{name} is not at the root nor in {ARCHIVED}/")
-    active = {spec["name"] for spec in read_active(folder)}
     problems: list[str] = []
+    try:
+        active = {spec["name"] for spec in read_active(folder)}
+    except (OSError, UnicodeDecodeError) as error:
+        active = set()
+        problems.append(f"STATUS.md: cannot be read ({getattr(error, 'strerror', None) or error}), so Active was not checked")
     for spec_name, place, path in specs:
-        text = read_atlas_file(path)
+        try:
+            text = read_atlas_file(path)
+        except (OSError, UnicodeDecodeError) as error:
+            problems.append(f"{spec_name}: cannot be read ({getattr(error, 'strerror', None) or error})")
+            continue
         header, body = _split_header(text)
         for label, pattern in _CONTAMINATION:
             hits = [number for number, line in enumerate(body, start=len(header) + 1) if pattern.search(line)]
@@ -275,6 +289,10 @@ def lint(folder: Path, name: str | None = None) -> list[str]:
 
 
 # --- the pieces ------------------------------------------------------------------------------
+
+
+def is_spec_name(name: str) -> bool:
+    return bool(_NAME.match(name)) and not name.endswith("_FINDINGS")
 
 
 def _parse(name: str) -> tuple[str, str]:
@@ -317,7 +335,7 @@ def _repos(path: Path) -> list[str]:
     return []
 
 
-def _stamp(path: Path, field: str, value: str, after: tuple[str, ...]) -> bool:
+def stamp_header(path: Path, field: str, value: str, after: tuple[str, ...]) -> bool:
     """Write `field: value` in the header once, after the first of `after` found; False when present."""
     lines, newline, final = _read(path)
     header_end = next((index for index, line in enumerate(lines) if line.startswith("## ")), len(lines))
@@ -366,7 +384,7 @@ def _open_work(folder: Path, repos: list[str], number: str, notes: list[str]) ->
     return found
 
 
-def _backlog_line(name: str):
+def line_of(name: str):
     pattern = re.compile(rf"^- {re.escape(name)}(\s|$)")
     return lambda line: bool(pattern.match(line))
 
@@ -389,7 +407,7 @@ def _write(path: Path, lines: list[str], newline: str, final: bool) -> None:
     path.write_text(text, encoding="utf-8", newline="")
 
 
-class _Document:
+class Document:
     """A Markdown file of record, edited by section and block, written back with its own line endings."""
 
     def __init__(self, path: Path):
@@ -492,19 +510,19 @@ class _Document:
         return None if found is None else self.lines[found[0] + 1 : found[1]]
 
     def add_block(self, heading: str, block: list[str]) -> None:
+        """The block goes last in the section: one blank line before it, one after it when a heading follows."""
         start, end = self._section(heading)
         at = self._content_start(start, end)
-        for index in range(at, end):
-            if self._is_empty_marker(self.lines[index]):
-                del self.lines[index]
-                end -= 1
-                break
-        last = end
-        while last > at and not self.lines[last - 1].strip():
-            last -= 1
-        insert = ([""] if last > start + 1 and self.lines[last - 1].strip() else []) + block
-        tail = [] if (last < len(self.lines) and not self.lines[last].strip()) else [""]
-        self.lines[last:last] = insert + tail
+        body = [line for line in self.lines[at:end] if not self._is_empty_marker(line)]
+        while body and not body[-1].strip():
+            body.pop()
+        if body:
+            fresh = body + [""] + block
+        else:
+            fresh = ([""] if at > start + 1 else []) + block
+        if end < len(self.lines):
+            fresh.append("")
+        self.lines[at:end] = fresh
         self.changed = True
 
     def remove_block(self, name: str) -> bool:

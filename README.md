@@ -87,7 +87,9 @@ edits through.
   <name>` stamps it, archives it with its findings and lists it as recently closed, refusing
   while its branch is unmerged; `atlas spec lint` reports what a SPEC carries that it should
   not. The Done / Next / Blocked lines are yours or the agent's.
-- **Day to day:** `atlas status` says where things stand; `atlas orient` prints what an agent
+- **Day to day:** `atlas status` says where things stand; `atlas sync` does the checkpoint's
+  mechanics (doctor, lint, missing stamps, a closed SPEC out of Active; `--check` writes nothing);
+  `atlas orient` prints what an agent
   needs at session start — stores, cadence, coding rules, state — and is the entry point for
   any workbench or editor (Claude Code's session hook just calls it); `/atlas-sync` is the checkpoint;
   `atlas unlink <name>` drops a source the Atlas no longer uses; `atlas ui` opens a local,

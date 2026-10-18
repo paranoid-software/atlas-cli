@@ -174,7 +174,11 @@ def _stamp_problems(folder: Path, active: set[str]) -> list[str]:
 def _header_stamps(path: Path) -> dict[str, list[str]]:
     found: dict[str, list[str]] = {"started": [], "closed": []}
     patterns = {"started": _STARTED_LINE, "closed": _CLOSED_LINE}
-    for line in _read_text(path).splitlines():
+    try:
+        text = _read_text(path)
+    except (OSError, UnicodeDecodeError):
+        return found  # a SPEC that can't be read has no stamps to judge; sync reports the file
+    for line in text.splitlines():
         if line.startswith("## "):
             break
         for field, pattern in patterns.items():
@@ -199,7 +203,11 @@ def _join(labels: list[str]) -> str:
 
 
 def _read_repos(folder: Path, name: str) -> set[str]:
-    for line in _read_text(folder / f"{name}.md").splitlines():
+    try:
+        text = _read_text(folder / f"{name}.md")
+    except (OSError, UnicodeDecodeError):
+        return set()  # a SPEC that can't be read touches no repo that status can name
+    for line in text.splitlines():
         match = _REPOS_LINE.match(line)
         if match:
             return {repo.strip() for repo in match.group(1).split(",") if repo.strip()}
