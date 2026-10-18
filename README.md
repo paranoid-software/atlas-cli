@@ -87,6 +87,10 @@ edits through.
   <name>` stamps it, archives it with its findings and lists it as recently closed, refusing
   while its branch is unmerged; `atlas spec lint` reports what a SPEC carries that it should
   not. The Done / Next / Blocked lines are yours or the agent's.
+- **Delegating a step:** `atlas handover <name> --step N` prints the brief for a workbench: the
+  SPEC, the step, where it stands, this Atlas's conventions, the coding rules (from the file the
+  Atlas declares, or `--rules <file>` when the source is an MCP server) and the method's standing
+  clauses; `--out <file>` writes it. The principal adds the files to imitate.
 - **Day to day:** `atlas status` says where things stand; `atlas sync` does the checkpoint's
   mechanics (doctor, lint, missing stamps, a closed SPEC out of Active; `--check` writes nothing);
   `atlas orient` prints what an agent
