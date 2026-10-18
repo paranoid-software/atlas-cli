@@ -1,6 +1,8 @@
 import json
+import os
 import shutil
 import subprocess
+import sys
 from importlib.resources import files
 from pathlib import Path
 
@@ -19,16 +21,21 @@ _CANDIDATE = """- **Candidate:** Name test files after the user's action.
 """
 
 
+def _run_hook(atlas: Path, path: str | None = None) -> subprocess.CompletedProcess:
+    # The hook calls whatever `atlas` is on PATH: the one of this environment, not the machine's.
+    env = {**os.environ, "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}" if path is None else path}
+    return subprocess.run(["bash", str(_HOOK)], cwd=atlas, capture_output=True, text=True, encoding="utf-8", check=True, env=env)
+
+
 def _context(atlas: Path) -> str:
-    result = subprocess.run(
-        ["bash", str(_HOOK)],
-        cwd=atlas,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=True,
-    )
-    return json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    return json.loads(_run_hook(atlas).stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def _orient(atlas: Path, monkeypatch, capsys) -> tuple[int, str]:
+    monkeypatch.chdir(atlas)
+    capsys.readouterr()
+    code = main(["orient"])
+    return code, capsys.readouterr().out.rstrip("\n")
 
 
 def _stage_candidate(atlas: Path) -> None:
@@ -117,3 +124,107 @@ def test_write_a_candidates_file_that_says_candidates_are_in_force(monkeypatch):
 
         text = (world.atlas / "CODING_RULES_CANDIDATES.md").read_text(encoding="utf-8")
         assert "in force in this Atlas from the moment it is written" in text
+
+
+def test_print_the_same_orientation_the_hook_injects(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=["log-daemon"]) as world:
+        monkeypatch.chdir(world.atlas)
+        assert main(["init"]) == 0
+        assert main(["link", "log-daemon", str(world.source("log-daemon"))]) == 0
+        assert main(["plugin", "add", "coding-rules", "file:RULES.md"]) == 0
+        _stage_candidate(world.atlas)
+
+        code, printed = _orient(world.atlas, monkeypatch, capsys)
+        injected = _context(world.atlas)
+
+    assert code == 0
+    assert printed == injected
+    assert "=== atlas status — where the Atlas and its sources stand ===" in printed
+    assert "=== STATUS.md — current state & next steps (read this first) ===" in printed
+
+
+def test_orient_without_the_plugin_says_nothing_about_coding_rules(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        monkeypatch.chdir(world.atlas)
+        assert main(["init"]) == 0
+
+        code, printed = _orient(world.atlas, monkeypatch, capsys)
+
+    assert code == 0
+    assert printed.startswith("SESSION START — ")
+    assert "CODING RULES — " not in printed
+
+
+def test_orient_names_the_coding_rules_source(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        monkeypatch.chdir(world.atlas)
+        assert main(["init"]) == 0
+        assert main(["plugin", "add", "coding-rules", "mcp:coco"]) == 0
+
+        _code, printed = _orient(world.atlas, monkeypatch, capsys)
+
+    assert 'CODING RULES — this Atlas declares the coding-rules plugin with source "mcp:coco"' in printed
+    assert "candidate rules in force here" not in printed
+    assert "=== CODING_RULES_DEVIATIONS.md — deviations in force ===" in printed
+
+
+def test_refuse_to_orient_outside_an_atlas(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    code = main(["orient"])
+
+    assert code == 1
+    assert capsys.readouterr().out == "This folder is not an Atlas (no _settings/atlas.toml).\n"
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_point_an_older_atlas_to_migrate_and_still_orient(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        (world.atlas / "STATUS.md").write_text("# acme — STATUS\n\n## Active\n_(none)_\n", encoding="utf-8", newline="\n")
+
+        code, printed = _orient(world.atlas, monkeypatch, capsys)
+        injected = _context(world.atlas)
+
+    assert code == 1
+    assert printed.startswith("This is an Atlas of the older model")
+    assert "run `atlas migrate`" in printed
+    assert "SESSION START — " in printed
+    assert "=== STATUS.md" in printed
+    assert "atlas status" not in printed
+    assert injected == printed
+
+
+def test_stay_silent_outside_an_atlas_and_say_so_without_the_cli(tmp_path):
+    assert _run_hook(tmp_path).stdout == ""
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        (world.atlas / "STATUS.md").write_text("# acme — STATUS\n", encoding="utf-8", newline="\n")
+        without_cli = _run_hook(world.atlas, path=f"{Path(shutil.which('jq')).parent}{os.pathsep}/usr/bin:/bin")
+
+    assert "the atlas CLI is not on PATH" in json.loads(without_cli.stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def test_say_so_when_the_cli_is_too_old_to_orient(tmp_path):
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    (stub / "atlas").write_text("#!/usr/bin/env bash\necho \"atlas: error: invalid choice: 'orient'\" >&2\nexit 2\n", encoding="utf-8")
+    (stub / "atlas").chmod(0o755)
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        (world.atlas / "STATUS.md").write_text("# acme — STATUS\n", encoding="utf-8", newline="\n")
+
+        result = _run_hook(world.atlas, path=f"{stub}{os.pathsep}{Path(shutil.which('jq')).parent}{os.pathsep}/usr/bin:/bin")
+
+    context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "`atlas orient` printed nothing" in context
+    assert "upgrade it" in context
+
+
+def test_mark_the_coding_rules_source_unreadable_when_the_declaration_is_off(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        monkeypatch.chdir(world.atlas)
+        assert main(["init"]) == 0
+        toml = world.atlas / "_settings/atlas.toml"
+        toml.write_text(toml.read_text(encoding="utf-8") + "\n[plugins.coding-rules]\nsource = \n", encoding="utf-8", newline="\n")
+
+        _code, printed = _orient(world.atlas, monkeypatch, capsys)
+
+    assert 'with source "(unreadable — check [plugins.coding-rules] in _settings/atlas.toml)"' in printed

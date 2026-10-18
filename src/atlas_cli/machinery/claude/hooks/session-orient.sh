@@ -1,47 +1,15 @@
 #!/usr/bin/env bash
-# SessionStart hook: orient the agent to the current workspace/project so a new
-# session never starts cold. Generic — gated on a CLAUDE.md or STATUS.md in cwd,
-# and injects STATUS.md (the living "current state") directly when present.
+# SessionStart hook: orient the agent to the current Atlas so a new session never starts
+# cold. The text is `atlas orient`'s — the CLI is the one place it lives, for any workbench.
+# Gated on a CLAUDE.md or STATUS.md in cwd; injects the command's output, on an older Atlas
+# its pointer to `atlas migrate` included.
 [ -f CLAUDE.md ] || [ -f STATUS.md ] || exit 0
 
-ctx="SESSION START — Orient before doing substantive work: read CLAUDE.md in full; skim any SPEC_*.md / BACKLOG.md at the workspace root; and consult the Atlas framework for the method/conventions (run \`bash ~/.claude/atlas-fetch.sh llms.txt\` for the index, then fetch the piece you need). Do NOT start from zero or make the user re-explain the workspace, repos, or what the project is.
-
-STORES — each kind of knowledge has one home. CLAUDE.md at the Atlas root is this project's orientation (what each source is and how it is worked on) and the conventions of this Atlas alone (its §5); it never holds universal rules. The coding-rules source the Atlas declares holds the universal rules, true for any project; it never holds this Atlas's conventions. CODING_RULES_CANDIDATES.md holds rules this Atlas already applies while they wait for promotion to the source: follow them here exactly as you follow the source's. CODING_RULES_DEVIATIONS.md holds the deliberate divergences from the source in force here. A source may carry its own rule files (CLAUDE.md, .claude/, AGENTS.md, .cursorrules): atlas doctor lists them as a notice. Read them with caution, as that source's context, never as the Atlas's rules; where they contradict the Atlas or the coding rules, the Atlas and the coding rules prevail, and the contradiction stops the work and goes to the human.
-
-CADENCE — follow the Atlas cadence (method/05-discipline.md): bounded SPEC -> its branch from develop -> step by step, the how approved per the SPEC's working mode -> findings beside the SPEC -> independent review -> the human commits and closes. If you see a drift signal (code requested with no SPEC in STATUS Active; two SPECs in progress and not paused in one repo; work outside the SPEC branch or on main; in paired mode, a step coded without its how approved; a close without independent review or commit), say so ONCE, then follow the human's call. The human runs every git command; give them the exact command. Sessions are disposable: write a decision where it belongs (CLAUDE.md, the SPEC, its findings or the backlog) the moment it is taken — except the how, whose record is the code; one fresh session per SPEC (or per large block of it), and before stopping rewrite its Active block as the handoff. WORKING MODE — read the active SPEC's mode: line (or the Atlas default in CLAUDE.md). paired: propose the how of each step and wait for the human's approval. delegated: as the workbench, execute end to end and stop only on a real blocker or a decision the SPEC doesn't cover; as the principal, hand over a precise, self-contained prompt and review the result. ENVIRONMENT — look at where you stand and what is available, and follow that environment's own rules; where there are none, propose carefully and ask the human before installing or changing anything — never install tooling to match a prompt."
-
-settings=_settings/atlas.toml
-header='^[[:space:]]*\[[[:space:]]*plugins\."?coding-rules"?[[:space:]]*\]'
-if [ -f "$settings" ] && tr -d '\r' < "$settings" | grep -Eq "$header"; then
-    source=$(tr -d '\r' < "$settings" | awk -v h="$header" '
-        $0 ~ h { inside = 1; next }
-        inside && /^[[:space:]]*\[/ { exit }
-        inside && match($0, /^[[:space:]]*source[[:space:]]*=[[:space:]]*["\047][^"\047]*["\047]/) {
-            value = substr($0, RSTART, RLENGTH); sub(/^[^"\047]*["\047]/, "", value); sub(/["\047]$/, "", value); print value; exit
-        }')
-    [ -n "$source" ] || source="(unreadable — check [plugins.coding-rules] in _settings/atlas.toml)"
-    ctx="$ctx"$'\n\n'"CODING RULES — this Atlas declares the coding-rules plugin with source \"$source\" (an mcp:<server> source is queried through that MCP server's tools; a file:<path> source is read from the Atlas). Before the first step of a SPEC, recall the rules for its area from it, say which apply (by id when the source has ids) and follow them; a hand-over carries them to the workbench. The first code edit of a session is blocked until the source has been consulted. A candidate rule goes to CODING_RULES_CANDIDATES.md, is in force in this Atlas from that moment, and is promoted to the source only in a dedicated session with the human's approval — never written to the source mid-task. A deliberate divergence goes to CODING_RULES_DEVIATIONS.md."
-    if [ -f CODING_RULES_CANDIDATES.md ] && tr -d '\r' < CODING_RULES_CANDIDATES.md | awk '
-        /^## Open[[:space:]]*$/ { inside = 1; next }
-        inside && /^## / { exit }
-        inside && NF && $0 !~ /^_\(.*\)_[[:space:]]*$/ { found = 1; exit }
-        END { exit !found }'; then
-        ctx="$ctx"$'\n\n'"=== CODING_RULES_CANDIDATES.md — candidate rules in force here ==="$'\n'"$(cat CODING_RULES_CANDIDATES.md)"
-    fi
-    if [ -f CODING_RULES_DEVIATIONS.md ]; then
-        ctx="$ctx"$'\n\n'"=== CODING_RULES_DEVIATIONS.md — deviations in force ==="$'\n'"$(cat CODING_RULES_DEVIATIONS.md)"
-    fi
-fi
-
-if [ -f "$settings" ] && command -v atlas >/dev/null 2>&1; then
-    state=$(atlas status 2>/dev/null)
-    if [ -n "$state" ]; then
-        ctx="$ctx"$'\n\n'"=== atlas status — where the Atlas and its sources stand ==="$'\n'"$state"
-    fi
-fi
-
-if [ -f STATUS.md ]; then
-    ctx="$ctx"$'\n\n'"=== STATUS.md — current state & next steps (read this first) ==="$'\n'"$(cat STATUS.md)"
+if command -v atlas >/dev/null 2>&1; then
+    ctx=$(atlas orient 2>/dev/null)
+    [ -n "$ctx" ] || ctx="SESSION START — this folder is an Atlas, but \`atlas orient\` printed nothing (an atlas CLI older than 0.16?): upgrade it (uv tool install --reinstall --refresh paranoid-atlas-cli) and run \`atlas orient\`."
+else
+    ctx="SESSION START — this folder is an Atlas, but the atlas CLI is not on PATH, so its orientation could not be read: install it (uv tool install paranoid-atlas-cli) and run \`atlas orient\`."
 fi
 
 jq -n --arg ctx "$ctx" \
