@@ -66,6 +66,9 @@ def _run(action, args) -> int:
     except Refusal as refusal:
         print(f"{refusal}; nothing was changed.")
         return 1
+    except (OSError, UnicodeDecodeError) as error:
+        print(f"A file could not be read ({getattr(error, 'strerror', None) or error}); the files of record may be partly written.")
+        return 1
     for line in lines:
         print(line)
     return 0
@@ -260,7 +263,11 @@ def lint(folder: Path, name: str | None = None) -> list[str]:
     active = {spec["name"] for spec in read_active(folder)}
     problems: list[str] = []
     for spec_name, place, path in specs:
-        text = read_atlas_file(path)
+        try:
+            text = read_atlas_file(path)
+        except (OSError, UnicodeDecodeError) as error:
+            problems.append(f"{spec_name}: cannot be read ({getattr(error, 'strerror', None) or error})")
+            continue
         header, body = _split_header(text)
         for label, pattern in _CONTAMINATION:
             hits = [number for number, line in enumerate(body, start=len(header) + 1) if pattern.search(line)]

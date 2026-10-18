@@ -199,3 +199,47 @@ def test_label_in_check_mode_what_it_would_fix(monkeypatch, capsys):
         assert main(["sync", "--check"]) == 1
 
         assert "SPEC_0002_OLD: archived without closed: (sync would fix it)" in _out(capsys)
+
+
+def test_move_a_closed_spec_out_of_active_even_when_its_archived_copy_cannot_be_read(monkeypatch, capsys):
+    import os
+    import stat
+
+    if os.name == "nt" or os.geteuid() == 0:
+        return
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        old = atlas / "_archived" / "SPEC_0002_OLD.md"
+        old.write_text("# SPEC_0002_OLD\ncreated: 2026-01-01\nclosed: 2026-01-09\n\n## What\nx\n", encoding="utf-8", newline="\n")
+        status = atlas / "STATUS.md"
+        status.write_text(status.read_text(encoding="utf-8").replace("never appended)_\n", "never appended)_\n\n### SPEC_0002_OLD — IN REVIEW\n- **Next:** close\n"), encoding="utf-8", newline="\n")
+        old.chmod(0)
+        try:
+            capsys.readouterr()
+            code = main(["sync"])
+            out = _out(capsys)
+            text = status.read_text(encoding="utf-8")
+        finally:
+            old.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+    assert code == 1
+    assert "### SPEC_0002_OLD" not in text
+    assert "- SPEC_0002_OLD → _archived/ (" in text
+    assert "_archived/SPEC_0002_OLD.md cannot be read" in out
+    assert "lint\n  SPEC_0002_OLD: cannot be read" in out
+
+
+def test_report_a_spec_that_is_not_utf8_and_lint_the_others(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        path = _spec(atlas, capsys)
+        path.write_bytes(b"# SPEC_0001_LOGS_ROTATE\ncreated: 2026-01-01\n\xff\xfe\n")
+        (atlas / "_archived" / "SPEC_0002_OLD.md").write_text("# SPEC_0002_OLD\ncreated: 2026-01-01\nclosed: 2026-01-09\n\n## What\n- [ ] box\n", encoding="utf-8", newline="\n")
+        capsys.readouterr()
+
+        code = main(["sync", "--check"])
+
+        out = _out(capsys)
+    assert code == 1
+    assert f"{_SPEC}: cannot be read" in out
+    assert "SPEC_0002_OLD: a checkbox" in out

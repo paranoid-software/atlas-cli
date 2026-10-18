@@ -78,23 +78,26 @@ def _plan(folder: Path, stamp: str) -> tuple[list[tuple[str, object]], list[str]
     unreadable: set[str] = set()
 
     def header(path: Path, field: str) -> str | None:
+        key = str(path.relative_to(folder))
         try:
             return _header_value(path, field)
-        except OSError as error:
-            unreadable.add(path.name)
-            reports.append(f"{path.relative_to(folder)} cannot be read ({error.strerror or error})")
+        except (OSError, UnicodeDecodeError) as error:
+            if key not in unreadable:
+                unreadable.add(key)
+                reports.append(f"{key} cannot be read ({getattr(error, 'strerror', None) or error})")
             return None
 
     for name in sorted(active_names - archived):
         path = folder / f"{name}.md"
-        if name in root and header(path, "started") is None and path.name not in unreadable:
+        if name in root and header(path, "started") is None and str(path.relative_to(folder)) not in unreadable:
             writes.append((f"{name}.md: started: {stamp}", lambda p=path: stamp_header(p, "started", stamp, after=("created",))))
     for name in sorted(archived):
         path = folder / ARCHIVED / f"{name}.md"
-        if header(path, "closed") is None and path.name not in unreadable:
+        if header(path, "closed") is None and str(path.relative_to(folder)) not in unreadable:
             writes.append((f"{ARCHIVED}/{name}.md: closed: {stamp}", lambda p=path: stamp_header(p, "closed", stamp, after=("started", "created"))))
     for name in sorted(active_names & archived):
-        writes.append((f"STATUS.md: {name} out of Active, into Recently closed", ("close", name)))
+        closed_on = header(folder / ARCHIVED / f"{name}.md", "closed") or stamp
+        writes.append((f"STATUS.md: {name} out of Active, into Recently closed", ("close", name, closed_on)))
     for name in sorted(root - backlog - (active_names - archived)):
         reports.append(f"{name}.md is at the root but in neither the backlog nor Active: `atlas spec start {name}`, or a backlog line")
     for name in sorted((backlog | active_names) - root - archived):
@@ -108,8 +111,7 @@ def _apply(folder: Path, writes: list[tuple[str, object]], stamp: str) -> None:
         if callable(action):
             action()
             continue
-        _kind, name = action
-        closed_on = _header_value(folder / ARCHIVED / f"{name}.md", "closed") or stamp
+        _kind, name, closed_on = action
         status.remove_block(name)
         status.empty_section_placeholder("## Active", "_(none)_")
         status.remove_from_section("## Recently closed", line_of(name))

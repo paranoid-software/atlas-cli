@@ -443,3 +443,15 @@ def test_place_the_first_block_cleanly_after_an_empty_active_section(monkeypatch
         assert main(["spec", "start", _SPEC]) == 0
 
         assert f"never appended)_\n\n### {_SPEC} — IN PROGRESS\n- **Done:** —\n- **Next:** step 1\n\n## Recently closed" in status.read_text(encoding="utf-8")
+
+
+def test_say_so_instead_of_crashing_on_a_spec_that_is_not_utf8(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        path = _new(atlas, capsys)
+        path.write_bytes(b"# SPEC_0001_LOGS_ROTATE\ncreated: 2026-01-01\n\xff\n")
+        capsys.readouterr()
+
+        assert main(["spec", "start", _SPEC]) == 1
+
+        assert "A file could not be read" in capsys.readouterr().out
