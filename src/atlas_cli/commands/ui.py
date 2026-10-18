@@ -1,4 +1,5 @@
 import json
+import sys
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
@@ -57,6 +58,13 @@ class AtlasUIServer(ThreadingHTTPServer):
     def __init__(self, folder: Path, port: int):
         self.atlas_folder = folder
         super().__init__(("127.0.0.1", port), AtlasUIHandler)
+
+    def handle_error(self, request, client_address) -> None:
+        """A browser drops its spare keep-alive connections with a reset: that is not an error."""
+        error = sys.exception()
+        if isinstance(error, (ConnectionResetError, BrokenPipeError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
 
 
 def make_server(folder: Path, port: int) -> AtlasUIServer:
