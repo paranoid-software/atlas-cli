@@ -81,6 +81,12 @@ edits through.
 - **Join a shared Atlas:** clone it, run `atlas doctor` inside it and follow what it says.
 - **Older Atlas:** `atlas migrate` shows the plan to bring it to the current model;
   `atlas migrate --apply` applies it.
+- **A SPEC's life:** `atlas spec new <SLUG>` creates it and indexes it in the backlog;
+  `atlas spec start <name>` stamps it, enters it in STATUS → Active and prints the branch
+  commands; `atlas spec pause|resume|review <name>` keep its Active block; `atlas spec close
+  <name>` stamps it, archives it with its findings and lists it as recently closed, refusing
+  while its branch is unmerged; `atlas spec lint` reports what a SPEC carries that it should
+  not. The Done / Next / Blocked lines are yours or the agent's.
 - **Day to day:** `atlas status` says where things stand; `atlas orient` prints what an agent
   needs at session start — stores, cadence, coding rules, state — and is the entry point for
   any workbench or editor (Claude Code's session hook just calls it); `/atlas-sync` is the checkpoint;
