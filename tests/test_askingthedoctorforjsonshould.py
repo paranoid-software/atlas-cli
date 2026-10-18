@@ -65,11 +65,12 @@ def test_report_every_kind_of_finding_with_its_fix(monkeypatch, capsys):
                 },
             ],
             "findings": [
-                {"kind": "rules", "subject": "ruled", "detail": "CLAUDE.md", "fix": []},
-                {"kind": "placeholder", "subject": "draft", "detail": "<one paragraph>", "fix": []},
-                {"kind": "unoriented", "subject": "bare", "detail": None, "fix": []},
+                {"kind": "rules", "level": "notice", "subject": "ruled", "detail": "CLAUDE.md", "fix": []},
+                {"kind": "placeholder", "level": "problem", "subject": "draft", "detail": "<one paragraph>", "fix": []},
+                {"kind": "unoriented", "level": "problem", "subject": "bare", "detail": None, "fix": []},
                 {
                     "kind": "missing",
+                    "level": "problem",
                     "subject": "log-daemon",
                     "detail": None,
                     "fix": [
@@ -77,27 +78,31 @@ def test_report_every_kind_of_finding_with_its_fix(monkeypatch, capsys):
                         "atlas link log-daemon ../log-daemon",
                     ],
                 },
-                {"kind": "broken", "subject": "notes", "detail": str((atlas / "notes").readlink()), "fix": []},
+                {"kind": "broken", "level": "problem", "subject": "notes", "detail": str((atlas / "notes").readlink()), "fix": []},
                 {
                     "kind": "credentials",
+                    "level": "problem",
                     "subject": "vault",
                     "detail": "https://…@github.com/me/vault.git",
                     "fix": [f"atlas link vault {shlex.quote(str((atlas / 'vault').readlink()))}"],
                 },
                 {
                     "kind": "missing",
+                    "level": "problem",
                     "subject": "infra/gke-n8n",
                     "detail": None,
                     "fix": [f"git clone {shlex.quote(world.origin('infra/gke-n8n'))} infra/gke-n8n"],
                 },
                 {
                     "kind": "undeclared",
+                    "level": "problem",
                     "subject": "infra/gke-new",
                     "detail": None,
                     "fix": [f"atlas link infra {shlex.quote(str((atlas / 'infra').readlink()))}"],
                 },
                 {
                     "kind": "undeclared",
+                    "level": "problem",
                     "subject": "scratch",
                     "detail": None,
                     "fix": [f"atlas link scratch {shlex.quote(str((atlas / 'scratch').readlink()))}"],
@@ -190,6 +195,7 @@ def test_keep_credentials_out_of_the_json(monkeypatch, capsys):
         ]
         assert credentials == {
             "kind": "credentials",
+            "level": "problem",
             "subject": "log-daemon",
             "detail": "https://…@github.com/me/log-daemon.git",
             "fix": [],

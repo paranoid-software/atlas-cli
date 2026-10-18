@@ -213,3 +213,17 @@ def test_tell_the_atlas_name_with_the_version(monkeypatch):
             answer = _get_json(port, "/api/version")
 
     assert answer["name"] == "acme"
+
+
+def test_list_the_rule_files_a_source_carries(monkeypatch):
+    with EphemeralAtlasContext(git_sources=["log-daemon"], plain_sources=["notes"]) as world:
+        monkeypatch.chdir(world.atlas)
+        assert main(["init"]) == 0
+        assert main(["link", "log-daemon", str(world.source("log-daemon"))]) == 0
+        assert main(["link", "notes", str(world.source("notes"))]) == 0
+        (world.source("log-daemon") / "AGENTS.md").write_text("rules\n", encoding="utf-8")
+
+        by_name = _by_name(_sources(world.atlas))
+
+    assert by_name["log-daemon"]["rules"] == ["AGENTS.md"]
+    assert by_name["notes"]["rules"] == []

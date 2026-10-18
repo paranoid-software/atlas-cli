@@ -96,7 +96,9 @@ export class OverviewPlugster extends Plugster {
             .sort((left, right) => left - right);
         let median = leads.length ? (leads.length % 2 ? leads[(leads.length - 1) / 2] : (leads[leads.length / 2 - 1] + leads[leads.length / 2]) / 2) : null;
         let findings = specs.reduce((sum, spec) => sum + (spec.findings || '').split('\n').filter((line) => line.startsWith('- ')).length, 0);
-        let doctorCount = doctor.findings ? doctor.findings.length : 0;
+        let doctorFindings = doctor.findings || [];
+        let doctorCount = doctorFindings.filter((finding) => finding.level !== 'notice').length;
+        let noticeCount = doctorFindings.length - doctorCount;
 
         this._.kpiList.clear();
         [
@@ -105,7 +107,8 @@ export class OverviewPlugster extends Plugster {
             {key: 'closed', name: 'Closed, 7 days', value: closedLately.length, note: `${specs.filter((spec) => spec.place === 'archived').length} ${this._t('in all')}`, view: 'timeline'},
             {key: 'lead', filter: {place: 'archived'}, name: 'Median lead time', value: median === null ? '–' : `${median} d`, note: leads.length ? `${leads.length} ${this._t('SPECs')}` : '', view: 'specs'},
             {key: 'findings', filter: {findings: 'with'}, name: 'Findings', value: findings, note: '', view: 'specs'},
-            {key: 'doctor', name: 'Doctor', value: doctorCount, note: doctorCount ? this._t('to fix') : this._t('all clear'), view: 'health', bad: doctorCount > 0}
+            {key: 'doctor', name: 'Doctor', value: doctorCount, view: 'health', bad: doctorCount > 0,
+                note: doctorCount ? this._t('to fix') : (noticeCount ? (noticeCount === 1 ? this._t('1 notice') : this._t('{count} notices').replace('{count}', noticeCount)) : this._t('all clear'))}
         ].forEach((kpi) => {
             let outlets = this._.kpiList.buildListItem(
                 0, kpi.key, kpi, {nameLabel: {}, valueLabel: {}, noteLabel: {}}, this._.kpiList.count(),
@@ -117,12 +120,15 @@ export class OverviewPlugster extends Plugster {
         });
 
         this._.attentionList.clear();
-        (doctor.findings || []).slice(0, 6).forEach((finding, index) => {
+        doctorFindings.slice(0, 6).forEach((finding, index) => {
             let outlets = this._.attentionList.buildListItem(
                 0, `finding-${index}`, finding, {kindLabel: {}, subjectLabel: {}}, this._.attentionList.count(),
                 () => this.dispatchEvent(this.viewChosen.name, {view: 'health'}));
-            outlets.kindLabel.text(finding.kind).addClass(`is-${finding.kind}`);
-            outlets.subjectLabel.text(finding.detail ? `${finding.subject}: ${finding.detail}` : finding.subject);
+            let notice = finding.level === 'notice';
+            outlets.kindLabel.text(notice ? this._t('notice') : finding.kind).addClass(notice ? 'is-notice' : `is-${finding.kind}`);
+            outlets.subjectLabel.text(notice
+                ? this._t('{subject} carries its own rule files: {files}').replace('{subject}', finding.subject).replace('{files}', finding.detail || '')
+                : (finding.detail ? `${finding.subject}: ${finding.detail}` : finding.subject));
         });
         this._dataNotes(specs, corpus.unrecognized || []).forEach((note) => {
             let outlets = this._.attentionList.buildListItem(

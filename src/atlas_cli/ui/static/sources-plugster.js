@@ -43,7 +43,7 @@ export class SourcesPlugster extends Plugster {
     _renderSource(source) {
         let card = this._.sourcesList.buildListItem(
             0, source.name, source,
-            {nameLabel: {}, stateLabel: {}, kindLabel: {}, gitRow: {}, branchLabel: {}, changesLabel: {}, lastLabel: {}, specBranchesLabel: {}},
+            {nameLabel: {}, stateLabel: {}, kindLabel: {}, gitRow: {}, branchLabel: {}, changesLabel: {}, lastLabel: {}, specBranchesLabel: {}, rulesLabel: {}},
             this._.sourcesList.count());
         let nested = source.name.includes('/');
         card.root.addClass(`is-${this._tone(source)}`).toggleClass('is-nested', nested);
@@ -58,6 +58,9 @@ export class SourcesPlugster extends Plugster {
         card.lastLabel.text(source.last
             ? `${source.last.date} · ${source.last.author} · ${source.last.subject}`
             : (source.kind === 'repo' ? this._t('No commits yet') : ''));
+        let rules = source.rules || [];
+        card.rulesLabel.text(rules.length ? this._t('Own rule files: {files}').replace('{files}', rules.join(', ')) : '')
+            .attr('title', rules.length ? this._t('That source\'s context, read with caution; the Atlas and the coding rules prevail.') : '');
         let branches = source.spec_branches || [];
         card.specBranchesLabel.text(branches.length
             ? this._t('Spec branches: {branches}').replace('{branches}', branches.map((entry) => `${entry.branch} (${entry.last})`).join(', '))
@@ -71,7 +74,7 @@ export class SourcesPlugster extends Plugster {
 
     _tone(source) {
         if (source.state !== 'ok') return 'bad';
-        if (source.changes > 0) return 'warn';
+        if (source.changes > 0 || (source.rules || []).length) return 'warn';
         return 'ok';
     }
 
