@@ -81,7 +81,9 @@ edits through.
 - **Join a shared Atlas:** clone it, run `atlas doctor` inside it and follow what it says.
 - **Older Atlas:** `atlas migrate` shows the plan to bring it to the current model;
   `atlas migrate --apply` applies it.
-- **Day to day:** `atlas status` says where things stand; `/atlas-sync` is the checkpoint;
+- **Day to day:** `atlas status` says where things stand; `atlas orient` prints what an agent
+  needs at session start — stores, cadence, coding rules, state — and is the entry point for
+  any workbench or editor (Claude Code's session hook just calls it); `/atlas-sync` is the checkpoint;
   `atlas unlink <name>` drops a source the Atlas no longer uses; `atlas ui` opens a local,
   read-only page on the Atlas — doctor made plain, the SPECs with search, stats, rules and
   machinery.
