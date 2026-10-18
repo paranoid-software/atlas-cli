@@ -431,3 +431,51 @@ def test_refuse_to_lint_a_spec_that_is_nowhere(monkeypatch, capsys):
         assert main(["spec", "lint", "SPEC_0009_NOWHERE"]) == 1
 
         assert "is not at the root nor in _archived/" in capsys.readouterr().out
+
+
+def test_place_the_first_block_cleanly_after_an_empty_active_section(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        _new(atlas, capsys)
+        status = atlas / "STATUS.md"
+        status.write_text(status.read_text(encoding="utf-8").replace("never appended)_\n", "never appended)_\n\n_(none)_\n"), encoding="utf-8", newline="\n")
+
+        assert main(["spec", "start", _SPEC]) == 0
+
+        assert f"never appended)_\n\n### {_SPEC} — IN PROGRESS\n- **Done:** —\n- **Next:** step 1\n\n## Recently closed" in status.read_text(encoding="utf-8")
+
+
+def test_say_so_instead_of_crashing_on_a_spec_that_is_not_utf8(monkeypatch, capsys):
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        path = _new(atlas, capsys)
+        path.write_bytes(b"# SPEC_0001_LOGS_ROTATE\ncreated: 2026-01-01\n\xff\n")
+        capsys.readouterr()
+
+        assert main(["spec", "start", _SPEC]) == 1
+
+        assert "A file could not be read" in capsys.readouterr().out
+
+
+def test_lint_the_specs_even_when_status_cannot_be_read(monkeypatch, capsys):
+    import os
+    import stat
+
+    if os.name == "nt" or os.geteuid() == 0:
+        return
+    with EphemeralAtlasContext(git_sources=[]) as world:
+        atlas = _atlas(world, monkeypatch)
+        path = _new(atlas, capsys)
+        path.write_text(path.read_text(encoding="utf-8") + "\n- [ ] box\n", encoding="utf-8", newline="\n")
+        status = atlas / "STATUS.md"
+        status.chmod(0)
+        try:
+            capsys.readouterr()
+            code = main(["spec", "lint"])
+            out = _out(capsys)
+        finally:
+            status.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+    assert code == 1
+    assert out[0].startswith("STATUS.md: cannot be read")
+    assert f"{_SPEC}: a checkbox" in out[1]

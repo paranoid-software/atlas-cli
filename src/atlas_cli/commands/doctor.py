@@ -214,6 +214,11 @@ def _finding(kind: str, subject: str, detail: str | None = None, fix: list[str] 
     }
 
 
+def report_lines(report: dict) -> list[str]:
+    """The report as `atlas doctor` prints it."""
+    return _render(report)
+
+
 def _render(report: dict) -> list[str]:
     lines: list[str] = []
     findings = report["findings"]
