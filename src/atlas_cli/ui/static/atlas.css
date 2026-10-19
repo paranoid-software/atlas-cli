@@ -192,7 +192,7 @@ kbd { font-size: 11px; padding: 1px 6px; border: 1px solid var(--line-strong); b
     color: var(--muted);
 }
 .c-pill.is-ok, .c-pill.is-view { background: var(--ok-soft); color: var(--ok); }
-.c-pill.is-missing, .c-pill.is-broken, .c-pill.is-credentials { background: var(--bad-soft); color: var(--bad); }
+.c-pill.is-missing, .c-pill.is-broken, .c-pill.is-credentials, .c-pill.is-workbench { background: var(--bad-soft); color: var(--bad); }
 .c-pill.is-notice, .c-pill.is-undeclared, .c-pill.is-rules, .c-pill.is-unoriented, .c-pill.is-placeholder, .c-pill.is-deviation { background: var(--warn-soft); color: var(--warn); }
 .c-pill.is-spec { background: var(--accent-soft); color: var(--accent); }
 .c-pill.is-finding, .c-pill.is-candidate { background: var(--violet-soft); color: var(--violet); }

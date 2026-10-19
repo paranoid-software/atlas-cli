@@ -10,6 +10,7 @@ from atlas_cli.sourcedeclaration import (
     redact_credentials,
     strip_credentials,
 )
+from atlas_cli.workbenches import KNOWN_WORKBENCHES, declared_workbenches, judge, undeclared_workbenches, workbench_file
 from atlas_cli.sourcestate import (
     CLAUDE_MD,
     atlas_entries,
@@ -48,7 +49,7 @@ def diagnose(folder: Path) -> dict:
     toml_path = folder / ATLAS_TOML
     if not toml_path.is_file():
         raise ValueError(f"This folder is not an Atlas (no {ATLAS_TOML})")
-    _, declared = read_atlas_toml(toml_path)
+    text, declared = read_atlas_toml(toml_path)
     entries = atlas_entries(folder)
     blocks = _orientation_blocks(folder)
     sources: list[dict] = []
@@ -65,6 +66,12 @@ def diagnose(folder: Path) -> dict:
         findings.extend(_credential_findings(folder, name, name, remote))
         for child, child_remote in repos.items():
             findings.extend(_credential_findings(folder, f"{name}/{child}", name, child_remote))
+    for workbench in declared_workbenches(text):
+        state = judge(folder, workbench, declared, entries) if workbench in KNOWN_WORKBENCHES else "unknown"
+        if state != "ok":
+            findings.append(_finding("workbench", workbench, state, fix=[f"atlas workbench add {workbench}"] if state != "unknown" else []))
+    for workbench in undeclared_workbenches(folder, text):
+        findings.append(_finding("workbench", workbench, f"undeclared ({workbench_file(workbench)} is there but link and unlink don't keep it)", fix=[f"atlas workbench add {workbench}"]))
     if blocks is None:
         findings.append(_finding("missing", CLAUDE_MD))
     known = {str(declared_name) for declared_name in declared}
@@ -258,7 +265,7 @@ def _render_finding(finding: dict) -> list[str]:
         line = f"credentials {subject} -> {detail}"
     elif kind == "rules":
         return [f"rules {subject}: {detail}", f"  {RULES_NOTICE}"]
-    elif kind == "placeholder":
+    elif kind in {"placeholder", "workbench"}:
         line = f"{kind} {subject}: {detail}"
     else:
         line = f"{kind} {subject}"

@@ -22,6 +22,7 @@ def test_declare_an_existing_symlink_and_point_it_at_the_new_path(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         current = world.source("old-log-daemon")
         moved = world.source("new-log-daemon")
         (atlas / "log-daemon").symlink_to(current)
@@ -50,6 +51,7 @@ def test_declare_an_existing_symlink_that_already_points_at_the_path(monkeypatch
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         source = world.source("log-daemon")
         (atlas / "log-daemon").symlink_to(source.resolve())
 
@@ -67,6 +69,7 @@ def test_refuse_to_adopt_over_a_real_file(monkeypatch, capsys):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         (atlas / "log-daemon").write_text("keep me", encoding="utf-8")
         before = _tracked(atlas)
         source = world.source("log-daemon")
@@ -85,6 +88,7 @@ def test_refuse_to_adopt_over_a_real_directory(monkeypatch, capsys):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         (atlas / "log-daemon").mkdir()
         (atlas / "log-daemon" / "keep").write_text("stay", encoding="utf-8")
         before = _tracked(atlas)

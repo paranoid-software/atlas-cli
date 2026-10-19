@@ -22,6 +22,7 @@ def _scan(atlas: Path) -> list[str]:
 def _init_and_link(world: EphemeralAtlasContext, monkeypatch) -> Path:
     monkeypatch.chdir(world.atlas)
     assert main(["init"]) == 0
+    assert main(["workbench", "add", "claude"]) == 0
     assert main(["link", "infra", str(world.source("infra"))]) == 0
     orient_sources(world.atlas, "infra")
     return world.atlas
@@ -59,6 +60,7 @@ def test_declare_a_folder_with_no_git_children_as_today(monkeypatch):
     with EphemeralAtlasContext(git_sources=[], plain_sources=["notes"]) as world:
         monkeypatch.chdir(world.atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         (world.source("notes") / "drafts").mkdir()
 
         assert main(["link", "notes", str(world.source("notes"))]) == 0
@@ -248,6 +250,7 @@ def test_doctor_flags_a_repo_that_appeared_in_a_plain_folder(monkeypatch, capsys
     with EphemeralAtlasContext(git_sources=[], plain_sources=["notes"]) as world:
         monkeypatch.chdir(world.atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         assert main(["link", "notes", str(world.source("notes"))]) == 0
         orient_sources(world.atlas, "notes")
         subprocess.run(["git", "init", "-q", str(world.source("notes") / "tool")], check=True)
@@ -263,6 +266,7 @@ def test_keep_the_editor_entries_where_they_were_on_rebind(monkeypatch):
     with EphemeralAtlasContext(git_sources=["a", "b"], grouped_sources=_GROUP) as world:
         monkeypatch.chdir(world.atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         assert main(["link", "a", str(world.source("a"))]) == 0
         assert main(["link", "infra", str(world.source("infra"))]) == 0
         assert main(["link", "b", str(world.source("b"))]) == 0
@@ -277,6 +281,7 @@ def test_unlink_a_folder_whose_name_prefixes_another_source(monkeypatch):
     with EphemeralAtlasContext(git_sources=[], grouped_sources={"infra": ["x"], "infra2": ["y"]}) as world:
         monkeypatch.chdir(world.atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         assert main(["link", "infra", str(world.source("infra"))]) == 0
         assert main(["link", "infra2", str(world.source("infra2"))]) == 0
 

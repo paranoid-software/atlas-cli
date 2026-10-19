@@ -22,23 +22,33 @@ def test_create_the_base_set_and_nothing_else(tmp_path, monkeypatch):
         "BACKLOG.md",
         "_archived/README.md",
         "_settings/atlas.toml",
-        ".claude/settings.local.json",
         ".vscode/settings.json",
         ".gitignore",
     }
 
 
-def test_start_with_no_sources_and_no_plugins(tmp_path, monkeypatch):
+def test_start_with_no_sources_no_plugins_and_no_workbenches(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     main(["init"])
 
     settings = tomllib.loads((tmp_path / "_settings/atlas.toml").read_text(encoding="utf-8"))
     assert settings == {"version": 1, "plugins": {}}
-    claude = json.loads((tmp_path / ".claude/settings.local.json").read_text(encoding="utf-8"))
-    assert claude == {"permissions": {"allow": [], "additionalDirectories": []}}
     vscode = json.loads((tmp_path / ".vscode/settings.json").read_text(encoding="utf-8"))
     assert vscode == {"git.autoRepositoryDetection": True, "git.scanRepositories": []}
+    assert not (tmp_path / ".claude").exists()
+
+
+def test_write_a_workbench_s_file_once_it_is_declared(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    main(["init"])
+
+    assert main(["workbench", "add", "claude"]) == 0
+
+    settings = tomllib.loads((tmp_path / "_settings/atlas.toml").read_text(encoding="utf-8"))
+    assert settings["workbenches"] == {"claude": {}}
+    claude = json.loads((tmp_path / ".claude/settings.local.json").read_text(encoding="utf-8"))
+    assert claude == {"permissions": {"allow": [], "additionalDirectories": []}}
 
 
 def test_ignore_everything_but_the_atlas_files(tmp_path, monkeypatch):
@@ -103,8 +113,9 @@ def test_keep_what_an_existing_claude_settings_already_allows(tmp_path, monkeypa
         '{"permissions": {"allow": ["Bash(ls:*)"]}}', encoding="utf-8"
     )
     monkeypatch.chdir(tmp_path)
-
     assert main(["init"]) == 0
+
+    assert main(["workbench", "add", "claude"]) == 0
 
     claude = json.loads((tmp_path / ".claude/settings.local.json").read_text(encoding="utf-8"))
     assert claude == {"permissions": {"allow": ["Bash(ls:*)"], "additionalDirectories": []}}
@@ -137,14 +148,18 @@ def test_keep_an_existing_gitignore_and_ask_to_check_it(tmp_path, monkeypatch, c
     assert "Check that the existing .gitignore" in capsys.readouterr().out
 
 
-def test_refuse_unreadable_claude_settings_and_change_nothing(tmp_path, monkeypatch, capsys):
+def test_refuse_to_declare_a_workbench_whose_file_cannot_be_read(tmp_path, monkeypatch, capsys):
     (tmp_path / ".claude").mkdir()
     (tmp_path / ".claude/settings.local.json").write_text("{ not json", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
+    assert main(["init"]) == 0
+    toml_before = (tmp_path / "_settings/atlas.toml").read_bytes()
+    capsys.readouterr()
 
-    assert main(["init"]) == 1
+    assert main(["workbench", "add", "claude"]) == 1
 
-    assert _files_under(tmp_path) == {".claude/settings.local.json"}
+    assert (tmp_path / ".claude/settings.local.json").read_text(encoding="utf-8") == "{ not json"
+    assert (tmp_path / "_settings/atlas.toml").read_bytes() == toml_before
     assert "nothing was changed" in capsys.readouterr().out
 
 

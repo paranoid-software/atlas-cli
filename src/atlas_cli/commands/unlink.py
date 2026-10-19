@@ -5,14 +5,14 @@ from pathlib import Path
 
 from atlas_cli.atlasfiles import (
     ATLAS_TOML,
-    CLAUDE_SETTINGS,
     VSCODE_SETTINGS,
     plan_json_file,
     read_atlas_file,
     read_atlas_toml,
     write_atlas_file,
 )
-from atlas_cli.settingscompletion import remove_directories, remove_scan_repository
+from atlas_cli.settingscompletion import remove_scan_repository
+from atlas_cli.workbenches import declared_workbenches, on_unlink
 from atlas_cli.sourcedeclaration import check_source_name, source_section_span
 from atlas_cli.sourcestate import atlas_entries
 
@@ -60,13 +60,10 @@ def _plan_unlink(folder: Path, name: str) -> dict:
     files = []
     if name in declared:
         files.append((ATLAS_TOML, _drop_source(text, name)))
-    for path, complete in (
-        (VSCODE_SETTINGS, remove_scan_repository(name)),
-        (CLAUDE_SETTINGS, remove_directories(stale)),
-    ):
-        content = _plan_settings(folder / path, complete)
-        if content is not None:
-            files.append((path, content))
+    content = _plan_settings(folder / VSCODE_SETTINGS, remove_scan_repository(name))
+    if content is not None:
+        files.append((VSCODE_SETTINGS, content))
+    files.extend(on_unlink(folder, declared_workbenches(text), name, stale))
     return {"name": name, "target": target, "files": files}
 
 
