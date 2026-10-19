@@ -47,7 +47,6 @@ def test_print_the_plan_and_change_nothing(monkeypatch, capsys):
             f"declare log-daemon ({context.origin('log-daemon')})",
             "declare notes (not git)",
             "complete .vscode/settings.json",
-            "complete .claude/settings.local.json",
             "create .gitignore",
             "declare coding-rules (mcp:coco)",
             "rename COCO_CANDIDATES.md -> CODING_RULES_CANDIDATES.md",
@@ -94,6 +93,7 @@ def test_complete_the_settings_and_keep_what_they_already_hold(monkeypatch):
 
         assert main(["migrate", "--apply"]) == 0
 
+        assert _settings(atlas)["workbenches"] == {"claude": {}}
         vscode = _json(atlas / ".vscode/settings.json")
         assert vscode == {
             "editor.tabSize": 2,
@@ -111,19 +111,15 @@ def test_complete_the_settings_and_keep_what_they_already_hold(monkeypatch):
         }
 
 
-def test_create_the_settings_when_there_are_none(monkeypatch):
+def test_declare_no_workbench_when_there_are_no_settings(monkeypatch):
     with EphemeralAtlasContext(git_sources=[], plain_sources=["notes"]) as context:
         atlas = _build_v0_atlas(context, monkeypatch, ["notes"])
 
         assert main(["migrate", "--apply"]) == 0
 
-        assert _json(atlas / ".vscode/settings.json") == {
-            "git.autoRepositoryDetection": True,
-            "git.scanRepositories": ["notes"],
-        }
-        assert _json(atlas / ".claude/settings.local.json") == {
-            "permissions": {"allow": [], "additionalDirectories": [str(context.source("notes").resolve())]},
-        }
+        assert _json(atlas / ".vscode/settings.json") == {"git.autoRepositoryDetection": True, "git.scanRepositories": ["notes"]}
+        assert not (atlas / ".claude").exists()
+        assert "workbenches" not in _settings(atlas)
 
 
 def test_create_the_gitignore_whitelist_when_there_is_none(monkeypatch):

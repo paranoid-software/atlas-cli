@@ -12,6 +12,7 @@ def test_rebuild_a_cloned_atlas_with_the_links_doctor_suggests(monkeypatch, caps
     with EphemeralAtlasContext(["log-daemon", "atlas-cli"]) as world:
         monkeypatch.chdir(world.atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         assert main(["link", "log-daemon", str(world.source("log-daemon"))]) == 0
         assert main(["link", "atlas-cli", str(world.source("atlas-cli"))]) == 0
         orient_sources(world.atlas, "log-daemon", "atlas-cli")
@@ -50,4 +51,6 @@ def _missing_report(atlas: Path) -> str:
         lines.append(f"missing {name}")
         lines.append(f"git clone {shlex.quote(table['remote'])} {destination}")
         lines.append(f"atlas link {shlex.quote(name)} {destination}")
+    lines.append("workbench claude: missing")
+    lines.append("atlas workbench add claude")
     return "\n".join(lines) + "\n"

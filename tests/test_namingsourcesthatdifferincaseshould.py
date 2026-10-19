@@ -15,6 +15,7 @@ _TRACKED = (
 def _init(context: EphemeralAtlasContext, monkeypatch) -> Path:
     monkeypatch.chdir(context.atlas)
     assert main(["init"]) == 0
+    assert main(["workbench", "add", "claude"]) == 0
     return context.atlas
 
 
