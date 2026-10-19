@@ -82,7 +82,7 @@ def test_serve_the_doctor_report_as_json(monkeypatch, capsys):
             "ruled", "draft", "log-daemon", "notes", "vault", "infra",
         )
         (world.source("ruled") / "CLAUDE.md").write_text("rules\n", encoding="utf-8")
-        claude = atlas / "CLAUDE.md"
+        claude = atlas / "AGENTS.md"
         claude.write_text(
             claude.read_text(encoding="utf-8").replace(
                 "- **Contributes:** draft does its part.",

@@ -51,6 +51,7 @@ def test_print_the_plan_and_change_nothing(monkeypatch, capsys):
             "declare coding-rules (mcp:coco)",
             "rename COCO_CANDIDATES.md -> CODING_RULES_CANDIDATES.md",
             "create CODING_RULES_DEVIATIONS.md",
+            "rename CLAUDE.md -> AGENTS.md",
             "Run `atlas migrate --apply` to apply this plan.",
         ]
 
@@ -156,7 +157,7 @@ def test_move_the_coco_files_to_the_coding_rules_plugin_keeping_their_content(mo
         assert not (atlas / "COCO_CANDIDATES.md").exists()
         assert not (atlas / "DEVIATIONS.md").exists()
         out = capsys.readouterr().out.splitlines()
-        assert out[-3:] == [
+        assert out[-4:-1] == [
             "declared coding-rules (mcp:coco)",
             "renamed COCO_CANDIDATES.md -> CODING_RULES_CANDIDATES.md",
             "renamed DEVIATIONS.md -> CODING_RULES_DEVIATIONS.md",

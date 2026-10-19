@@ -3,7 +3,24 @@ import unicodedata
 from collections.abc import Iterable
 from pathlib import Path
 
-CLAUDE_MD = "CLAUDE.md"
+ORIENTATION_FILE = "AGENTS.md"
+LEGACY_ORIENTATION_FILE = "CLAUDE.md"
+IMPORT_STUB = "@AGENTS.md\n"
+
+
+def orientation_path(folder: Path) -> Path:
+    """The orientation file: AGENTS.md; CLAUDE.md while an Atlas has not migrated; AGENTS.md to create."""
+    if (folder / ORIENTATION_FILE).is_file():
+        return folder / ORIENTATION_FILE
+    if (folder / LEGACY_ORIENTATION_FILE).is_file():
+        return folder / LEGACY_ORIENTATION_FILE
+    return folder / ORIENTATION_FILE
+
+
+def is_import_stub(text: str) -> bool:
+    """A CLAUDE.md that starts with the import line; Claude-specific lines may follow it."""
+    first = next((line.strip() for line in text.splitlines() if line.strip()), "")
+    return first == IMPORT_STUB.strip()
 _SECTION_ONE = re.compile(r"^## 1\b")
 _BLOCK_HEADING = re.compile(r"^### (.+?) —(?:\s|$)")
 _PLACEHOLDER = re.compile(r"<[^<>\n]+>")
@@ -47,7 +64,7 @@ def _rule_file_is_present(source: Path, name: str) -> bool:
 
 
 def orientation_blocks(claude_md: str) -> dict[str, str]:
-    """The `### <name> — …` blocks of CLAUDE.md §1, by exact name, heading included.
+    """The `### <name> — …` blocks of the orientation file's §1, by exact name, heading included.
 
     Fenced code is left out of the blocks: a heading inside it ends nothing and a
     `<...>` inside it is code, not a placeholder.

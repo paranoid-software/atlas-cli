@@ -87,10 +87,10 @@ export class DoctorPlugster extends Plugster {
         let subject = finding.subject;
         let nested = subject.includes('/');
         let texts = {
-            missing: subject === 'CLAUDE.md' && finding.fix.length === 0 ? {
-                title: 'The Atlas has no CLAUDE.md',
+            missing: subject === 'AGENTS.md' && finding.fix.length === 0 ? {
+                title: 'The Atlas has no AGENTS.md',
                 why: 'Agents open this Atlas without its orientation: they don\'t know what each source is.',
-                fixBy: 'Write CLAUDE.md at the Atlas root, with an orientation block per source.'
+                fixBy: 'Write AGENTS.md at the Atlas root, with an orientation block per source.'
             } : {
                 title: '{subject} is missing on this machine',
                 why: nested
@@ -116,6 +116,11 @@ export class DoctorPlugster extends Plugster {
                 why: 'Tools load them on their own when working inside that source. They are its context, not this Atlas\'s rules.',
                 fixBy: 'Read them with caution. Where they contradict the Atlas or the coding rules, the Atlas and the coding rules prevail, and the contradiction is a decision for the human. Nothing to fix.'
             },
+            orientation: {
+                title: 'Notice: {subject} does not start with the import line',
+                why: 'AGENTS.md is the orientation file; CLAUDE.md is what Claude Code reads, and should start with @AGENTS.md so both say the same (Claude-specific lines may follow).',
+                fixBy: 'Move what CLAUDE.md holds into AGENTS.md and start CLAUDE.md with @AGENTS.md.'
+            },
             workbench: {
                 title: finding.detail === 'unknown' ? '{subject} is a workbench this CLI does not know'
                     : (String(finding.detail).startsWith('undeclared') ? 'The {subject} workbench\'s file is there, undeclared' : 'The {subject} workbench\'s file is ' + finding.detail),
@@ -130,12 +135,12 @@ export class DoctorPlugster extends Plugster {
             unoriented: {
                 title: '{subject} has no orientation block',
                 why: 'Agents don\'t know what this source is or how it is worked on.',
-                fixBy: 'Write its "### {subject} — …" block in CLAUDE.md §1.'
+                fixBy: 'Write its "### {subject} — …" block in AGENTS.md §1.'
             },
             placeholder: {
                 title: '{subject}\'s orientation block is not filled in',
                 why: 'It still carries the template\'s placeholders, so agents read placeholders instead of facts.',
-                fixBy: 'Replace the placeholders in its block in CLAUDE.md §1.'
+                fixBy: 'Replace the placeholders in its block in AGENTS.md §1.'
             },
             credentials: {
                 title: '{subject}\'s remote carries credentials',

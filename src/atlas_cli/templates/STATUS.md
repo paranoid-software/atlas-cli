@@ -1,6 +1,6 @@
 # $name — STATUS (living)
 
-Where this project is now. Standing decisions + orientation live in CLAUDE.md; the
+Where this project is now. Standing decisions + orientation live in AGENTS.md; the
 BACKLOG / SPEC_ / _archived artifacts are the record. Refresh at every checkpoint: `atlas sync`,
 then rewrite the Active blocks.
 

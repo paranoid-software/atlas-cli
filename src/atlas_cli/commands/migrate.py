@@ -15,8 +15,8 @@ from atlas_cli.atlasfiles import (
 from atlas_cli.plugindeclaration import KNOWN_PLUGINS, append_plugin
 from atlas_cli.settingscompletion import add_scan_repository, complete_vscode_settings, scan_entries
 from atlas_cli.sourcedeclaration import append_source, nested_repos, read_origin
-from atlas_cli.sourcestate import atlas_entries
-from atlas_cli.workbenches import KNOWN_WORKBENCHES, append_workbench, rebuild, workbench_file
+from atlas_cli.sourcestate import IMPORT_STUB, LEGACY_ORIENTATION_FILE, ORIENTATION_FILE, atlas_entries
+from atlas_cli.workbenches import KNOWN_WORKBENCHES, append_workbench, declared_workbenches, rebuild, workbench_file
 
 V0_MARKERS = ("CLAUDE.md", "STATUS.md")
 COCO_CANDIDATES = "COCO_CANDIDATES.md"
@@ -40,9 +40,12 @@ def run(args: argparse.Namespace) -> int:
             print("This folder is not an Atlas.")
             return 1
         if model == 1:
-            print("This Atlas is up to date (model v1).")
-            return 0
-        plan = _plan_migration(folder)
+            plan = _plan_rename(folder)
+            if plan is None:
+                print("This Atlas is up to date (model v1).")
+                return 0
+        else:
+            plan = _plan_migration(folder)
     except (ValueError, OSError) as error:
         print(f"{error}; nothing was changed.")
         return 1
@@ -51,10 +54,16 @@ def run(args: argparse.Namespace) -> int:
             print(planned)
         print("Run `atlas migrate --apply` to apply this plan.")
         return 0
-    for path, content in plan["writes"].items():
-        write_atlas_file(folder / path, content)
-    for path in plan["removals"]:
-        (folder / path).unlink()
+    try:
+        for old, new in plan.get("renames", []):
+            (folder / old).rename(folder / new)
+        for path, content in plan["writes"].items():
+            write_atlas_file(folder / path, content)
+        for path in plan["removals"]:
+            (folder / path).unlink()
+    except OSError as error:
+        print(f"Cannot apply the plan ({error.strerror or error}); check the Atlas's files.")
+        return 1
     for _, done in plan["steps"]:
         print(done)
     return 0
@@ -114,12 +123,40 @@ def _plan_migration(folder: Path) -> dict:
         note = f"note: {COCO_DEVIATIONS} needs a coding-rules source (atlas plugin add {CODING_RULES} <source>)"
         steps.append((note, note))
     writes[ATLAS_TOML] = toml_text
+    renames = _plan_orientation_rename(folder, "claude" in declared_workbenches(toml_text), steps, writes)
     for name, target in targets.items():
         found = _list_planning_files(target)
         if found:
             note = f"note: {name} holds planning files: {', '.join(found)}"
             steps.append((note, note))
-    return {"steps": steps, "writes": writes, "removals": removals}
+    return {"steps": steps, "writes": writes, "removals": removals, "renames": renames}
+
+
+def _plan_rename(folder: Path) -> dict | None:
+    """On an Atlas of the current model: the orientation file's rename, when it is still due."""
+    steps: list[tuple[str, str]] = []
+    writes: dict[str, str] = {}
+    toml_text = _read_file(folder / ATLAS_TOML)
+    renames = _plan_orientation_rename(folder, "claude" in declared_workbenches(toml_text), steps, writes)
+    if not steps:
+        return None
+    return {"steps": steps, "writes": writes, "removals": [], "renames": renames}
+
+
+def _plan_orientation_rename(folder: Path, claude_declared: bool, steps: list, writes: dict) -> list[tuple[str, str]]:
+    renames: list[tuple[str, str]] = []
+    legacy = folder / LEGACY_ORIENTATION_FILE
+    current = folder / ORIENTATION_FILE
+    if legacy.is_file() and not current.exists() and not current.is_symlink():
+        renames.append((LEGACY_ORIENTATION_FILE, ORIENTATION_FILE))
+        steps.append((f"rename {LEGACY_ORIENTATION_FILE} -> {ORIENTATION_FILE}", f"renamed {LEGACY_ORIENTATION_FILE} -> {ORIENTATION_FILE}"))
+        if claude_declared:
+            writes[LEGACY_ORIENTATION_FILE] = IMPORT_STUB
+            steps.append((f"write {LEGACY_ORIENTATION_FILE} as @{ORIENTATION_FILE}, for Claude Code", f"wrote {LEGACY_ORIENTATION_FILE} as @{ORIENTATION_FILE}, for Claude Code"))
+    elif current.is_file() and claude_declared and not legacy.exists():
+        writes[LEGACY_ORIENTATION_FILE] = IMPORT_STUB
+        steps.append((f"write {LEGACY_ORIENTATION_FILE} as @{ORIENTATION_FILE}, for Claude Code", f"wrote {LEGACY_ORIENTATION_FILE} as @{ORIENTATION_FILE}, for Claude Code"))
+    return renames
 
 
 def _describe_source(target: Path, remote: str | None, repos: dict[str, str | None]) -> str:

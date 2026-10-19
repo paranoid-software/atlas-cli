@@ -21,7 +21,7 @@ def _atlas(world: EphemeralAtlasContext, monkeypatch, capsys, plugin: str | None
         "## Acceptance\n- Old logs go.\n\n## Out of scope\n- Compression.\n\n## Plan\n1. The rotation,\n   with its tests.\n2. The docs.\n",
         encoding="utf-8", newline="\n",
     )
-    claude = atlas / "CLAUDE.md"
+    claude = atlas / "AGENTS.md"
     claude.write_text(claude.read_text(encoding="utf-8").replace("- _(empty — fill in as conventions get decided.)_\n", _SECTION_5), encoding="utf-8", newline="\n")
     if start:
         assert main(["spec", "start", _SPEC]) == 0
@@ -184,7 +184,7 @@ def test_keep_a_step_s_own_lines_and_accept_parenthesis_numbering(monkeypatch, c
 def test_keep_conventions_written_as_prose(monkeypatch, capsys):
     with EphemeralAtlasContext(git_sources=[]) as world:
         atlas = _atlas(world, monkeypatch, capsys)
-        claude = atlas / "CLAUDE.md"
+        claude = atlas / "AGENTS.md"
         claude.write_text(claude.read_text(encoding="utf-8").replace(_SECTION_5, "We always branch from develop.\nA list never ends at `_(empty)_`.\n"), encoding="utf-8", newline="\n")
 
         code, out = _brief(capsys)
@@ -197,7 +197,7 @@ def test_keep_conventions_written_as_prose(monkeypatch, capsys):
 def test_say_none_when_section_5_is_the_template_s(monkeypatch, capsys):
     with EphemeralAtlasContext(git_sources=[]) as world:
         atlas = _atlas(world, monkeypatch, capsys)
-        claude = atlas / "CLAUDE.md"
+        claude = atlas / "AGENTS.md"
         claude.write_text(claude.read_text(encoding="utf-8").replace(_SECTION_5, "- _(empty — fill in as conventions get decided.)_\n"), encoding="utf-8", newline="\n")
 
         _code, out = _brief(capsys)

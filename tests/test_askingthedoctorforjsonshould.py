@@ -240,7 +240,7 @@ def _prepare_an_atlas_with_every_finding(world: EphemeralAtlasContext, monkeypat
     for name in ("ruled", "draft", "bare", "log-daemon", "notes", "vault", "infra"):
         assert main(["link", name, str(world.source(name))]) == 0
     orient_sources(atlas, "ruled", "draft", "log-daemon", "notes", "vault", "infra")
-    claude = atlas / "CLAUDE.md"
+    claude = atlas / "AGENTS.md"
     claude.write_text(
         claude.read_text(encoding="utf-8").replace(
             "- **Contributes:** draft does its part.",
