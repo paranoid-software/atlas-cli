@@ -12,7 +12,10 @@ from atlas_cli.sourcedeclaration import (
 )
 from atlas_cli.workbenches import KNOWN_WORKBENCHES, declared_workbenches, judge, undeclared_workbenches, workbench_file
 from atlas_cli.sourcestate import (
-    CLAUDE_MD,
+    LEGACY_ORIENTATION_FILE,
+    ORIENTATION_FILE,
+    is_import_stub,
+    orientation_path,
     atlas_entries,
     case_twin,
     find_placeholders,
@@ -73,7 +76,13 @@ def diagnose(folder: Path) -> dict:
     for workbench in undeclared_workbenches(folder, text):
         findings.append(_finding("workbench", workbench, f"undeclared ({workbench_file(workbench)} is there but link and unlink don't keep it)", fix=[f"atlas workbench add {workbench}"]))
     if blocks is None:
-        findings.append(_finding("missing", CLAUDE_MD))
+        findings.append(_finding("missing", ORIENTATION_FILE))
+    elif (folder / ORIENTATION_FILE).is_file() and (folder / LEGACY_ORIENTATION_FILE).is_file():
+        try:
+            if not is_import_stub(read_atlas_file(folder / LEGACY_ORIENTATION_FILE)):
+                findings.append(_finding("orientation", LEGACY_ORIENTATION_FILE, f"does not start with @{ORIENTATION_FILE}: {ORIENTATION_FILE} is the orientation file, this one should import it", fix=[]))
+        except (OSError, UnicodeDecodeError):
+            pass
     known = {str(declared_name) for declared_name in declared}
     undeclared = sorted(
         (entry for entry in entries.values() if entry.is_symlink() and entry.name not in known),
@@ -167,13 +176,13 @@ def _nested_findings(folder: Path, name: str, repos: dict[str, str | None]) -> l
 
 
 def _orientation_blocks(folder: Path) -> dict[str, str] | None:
-    path = folder / CLAUDE_MD
+    path = orientation_path(folder)
     if not path.is_file():
         return None
     try:
         return orientation_blocks(read_atlas_file(path))
     except OSError as error:
-        raise ValueError(f"Cannot read {CLAUDE_MD} ({error.strerror})") from error
+        raise ValueError(f"Cannot read {path.name} ({error.strerror})") from error
 
 
 def _orientation_findings(blocks: dict[str, str], name: str) -> list[dict]:
@@ -206,7 +215,7 @@ def _remote(table: object) -> str | None:
     return remote
 
 
-NOTICES = {"rules"}
+NOTICES = {"rules", "orientation"}
 RULES_NOTICE = "a notice, not a problem: that source's own context, read with caution; the Atlas and the coding rules prevail, a contradiction goes to the human"
 
 
@@ -246,11 +255,11 @@ def _render(report: dict) -> list[str]:
 def _about(finding: dict, name: str) -> bool:
     """Whether this finding belongs with the source's own lines.
 
-    The missing orientation file is also `missing` with subject `CLAUDE.md`, and it is
+    The missing orientation file is also `missing` with subject `AGENTS.md`, and it is
     printed after every source. A declared source of that name always carries a fix.
     """
     subject = finding["subject"]
-    if subject == CLAUDE_MD and finding["kind"] == "missing" and not finding["fix"]:
+    if subject == ORIENTATION_FILE and finding["kind"] == "missing" and not finding["fix"]:
         return False
     return subject == name or subject.startswith(f"{name}/")
 
@@ -265,7 +274,7 @@ def _render_finding(finding: dict) -> list[str]:
         line = f"credentials {subject} -> {detail}"
     elif kind == "rules":
         return [f"rules {subject}: {detail}", f"  {RULES_NOTICE}"]
-    elif kind in {"placeholder", "workbench"}:
+    elif kind in {"placeholder", "workbench", "orientation"}:
         line = f"{kind} {subject}: {detail}"
     else:
         line = f"{kind} {subject}"

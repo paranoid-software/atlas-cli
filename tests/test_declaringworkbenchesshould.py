@@ -50,7 +50,7 @@ def test_declare_claude_and_write_its_file_from_the_declared_sources(monkeypatch
 
         assert main(["workbench", "add", "claude"]) == 0
 
-        assert _out(capsys) == "declared claude in _settings/atlas.toml\ncreated .claude/settings.local.json\n"
+        assert _out(capsys) == "declared claude in _settings/atlas.toml\ncreated .claude/settings.local.json\ncreated CLAUDE.md as @AGENTS.md, so Claude Code reads the orientation file\n"
         assert _toml(atlas)["workbenches"] == {"claude": {}}
         assert _json(atlas / ".claude/settings.local.json")["permissions"]["additionalDirectories"] == [
             str(world.source("log-daemon").resolve()), str(world.source("notes").resolve()),

@@ -11,7 +11,7 @@ _TRACKED = (
     ".vscode/settings.json",
     ".claude/settings.local.json",
 )
-_REMINDER = "Remove the orientation block of log-daemon from CLAUDE.md §1.\n"
+_REMINDER = "Remove the orientation block of log-daemon from AGENTS.md §1.\n"
 
 
 def _init(context: EphemeralAtlasContext, monkeypatch) -> Path:

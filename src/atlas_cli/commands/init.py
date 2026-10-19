@@ -13,13 +13,13 @@ from atlas_cli.atlasfiles import (
 from atlas_cli.settingscompletion import complete_vscode_settings
 
 ATLAS_FILES = {
-    "CLAUDE.md": "CLAUDE.md",
+    "AGENTS.md": "AGENTS.md",
     "STATUS.md": "STATUS.md",
     "BACKLOG.md": "BACKLOG.md",
     "_archived/README.md": "archived.md",
     ATLAS_TOML: "atlas.toml",
 }
-ATLAS_MARKERS = (ATLAS_TOML, "CLAUDE.md", "STATUS.md")
+ATLAS_MARKERS = (ATLAS_TOML, "AGENTS.md", "CLAUDE.md", "STATUS.md")
 
 
 def register(subparsers) -> None:
@@ -32,7 +32,7 @@ def run(args: argparse.Namespace) -> int:
     found = [marker for marker in ATLAS_MARKERS if (folder / marker).exists()]
     if found:
         print(f"This folder is already an Atlas (found {', '.join(found)}); nothing was changed.")
-        if ATLAS_TOML not in found:
+        if ATLAS_TOML not in found and any(marker in found for marker in ("CLAUDE.md", "STATUS.md")):
             print("It predates _settings/ — bring it up to date with `atlas migrate`.")
         return 1
     try:

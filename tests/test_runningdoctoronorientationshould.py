@@ -24,7 +24,7 @@ def _link(context: EphemeralAtlasContext, *names: str) -> None:
 
 
 def _write_claude_md(atlas: Path, section_one: str) -> None:
-    (atlas / "CLAUDE.md").write_text(
+    (atlas / "AGENTS.md").write_text(
         "# acme Atlas — agent instructions\n\n"
         "## 1. What lives here — sources and their purposes\n\n"
         f"{section_one}\n"
@@ -115,12 +115,12 @@ def test_report_a_missing_claude_md_once_and_judge_no_block(monkeypatch, capsys)
     with EphemeralAtlasContext(git_sources=[], plain_sources=["log-daemon", "notes"]) as context:
         atlas = _init(context, monkeypatch)
         _link(context, "log-daemon", "notes")
-        (atlas / "CLAUDE.md").unlink()
+        (atlas / "AGENTS.md").unlink()
 
         code, out = _doctor(capsys)
 
     assert code == 1
-    assert out == "ok log-daemon\nok notes\nmissing CLAUDE.md\n"
+    assert out == "ok log-daemon\nok notes\nmissing AGENTS.md\n"
 
 
 def test_match_the_block_by_the_exact_name(monkeypatch, capsys):
@@ -145,7 +145,7 @@ def test_look_for_the_block_in_section_one_only(monkeypatch, capsys):
     with EphemeralAtlasContext(git_sources=[], plain_sources=["log-daemon"]) as context:
         atlas = _init(context, monkeypatch)
         _link(context, "log-daemon")
-        (atlas / "CLAUDE.md").write_text(
+        (atlas / "AGENTS.md").write_text(
             "# acme Atlas — agent instructions\n\n"
             "## 1. What lives here — sources and their purposes\n\n"
             "_(no sources yet)_\n\n"

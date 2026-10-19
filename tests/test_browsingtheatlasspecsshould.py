@@ -220,7 +220,7 @@ def test_change_the_version_when_status_claude_or_a_link_changes(monkeypatch):
             versions.append(_get_json(port, "/api/version")["version"])
             _write(atlas / "STATUS.md", _STATUS)
             versions.append(_get_json(port, "/api/version")["version"])
-            _write(atlas / "CLAUDE.md", "# acme\n\n## 1. What lives here\n")
+            _write(atlas / "AGENTS.md", "# acme\n\n## 1. What lives here\n")
             versions.append(_get_json(port, "/api/version")["version"])
             assert main(["link", "notes", str(world.source("notes"))]) == 0
             versions.append(_get_json(port, "/api/version")["version"])

@@ -17,7 +17,7 @@ def test_create_the_base_set_and_nothing_else(tmp_path, monkeypatch):
     assert main(["init"]) == 0
 
     assert _files_under(tmp_path) == {
-        "CLAUDE.md",
+        "AGENTS.md",
         "STATUS.md",
         "BACKLOG.md",
         "_archived/README.md",
@@ -72,7 +72,7 @@ def test_name_the_atlas_after_its_folder(tmp_path, monkeypatch):
 
     main(["init"])
 
-    assert (folder / "CLAUDE.md").read_text(encoding="utf-8").startswith("# log-daemon Atlas")
+    assert (folder / "AGENTS.md").read_text(encoding="utf-8").startswith("# log-daemon Atlas")
     assert (folder / "STATUS.md").read_text(encoding="utf-8").startswith("# log-daemon — STATUS")
 
 
@@ -104,7 +104,7 @@ def test_write_utf8_with_unix_line_endings(tmp_path, monkeypatch):
 
     for path in _files_under(folder):
         assert b"\r\n" not in (folder / path).read_bytes(), path
-    assert (folder / "CLAUDE.md").read_bytes().startswith("# señal Atlas".encode("utf-8"))
+    assert (folder / "AGENTS.md").read_bytes().startswith("# señal Atlas".encode("utf-8"))
 
 
 def test_keep_what_an_existing_claude_settings_already_allows(tmp_path, monkeypatch):

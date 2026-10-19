@@ -14,7 +14,7 @@ from atlas_cli.atlasfiles import (
 from atlas_cli.settingscompletion import remove_scan_repository
 from atlas_cli.workbenches import declared_workbenches, on_unlink
 from atlas_cli.sourcedeclaration import check_source_name, source_section_span
-from atlas_cli.sourcestate import atlas_entries
+from atlas_cli.sourcestate import atlas_entries, orientation_path
 
 
 def register(subparsers) -> None:
@@ -36,7 +36,7 @@ def run(args: argparse.Namespace) -> int:
     for path, content in plan["files"]:
         write_atlas_file(folder / path, content)
         print(f"updated {path}")
-    print(f"Remove the orientation block of {plan['name']} from CLAUDE.md §1.")
+    print(f"Remove the orientation block of {plan['name']} from {orientation_path(folder).name} §1.")
     return 0
 
 
