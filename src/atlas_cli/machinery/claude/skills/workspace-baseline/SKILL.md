@@ -1,21 +1,21 @@
 ---
 name: workspace-baseline
-description: Use when bootstrapping a new Atlas (symlink-aggregator project root), editing CLAUDE.md / STATUS.md / BACKLOG.md / SPEC_*.md / DRAFT_*.md / _archived/ / the coding-rules plugin files, deciding where a piece of knowledge belongs across the stores, or auditing the user-global setup. The canonical Atlas framework (architecture + bootstrap recipe) lives in the Atlas framework doc, fetched via `~/.claude/atlas-fetch.sh`. This skill is the entry point — fetch the framework, then act.
+description: Use when bootstrapping a new Atlas (symlink-aggregator project root), editing CLAUDE.md / STATUS.md / BACKLOG.md / SPEC_*.md / DRAFT_*.md / _archived/ / the coding-rules plugin files, deciding where a piece of knowledge belongs across the stores, or auditing the user-global setup. The canonical Atlas framework (architecture + bootstrap recipe) lives in the Atlas framework doc, read with `atlas method`. This skill is the entry point — fetch the framework, then act.
 ---
 
 # workspace-baseline
 
-The canonical Atlas framework (architecture + bootstrap recipe) lives in the **Atlas framework doc**, fetched via `~/.claude/atlas-fetch.sh` from the source configured in `~/.claude/atlas-source` — the official site `https://atlas.paranoid.software`, or `http://localhost:8088` for local dev, or a local clone. This skill is the entry point: fetch the framework, then act.
+The canonical Atlas framework (architecture + bootstrap recipe) lives in the **Atlas framework doc**, read with `atlas method` from the source the CLI keeps (`atlas method --source <url|path>`: the official site `https://atlas.paranoid.software`, `http://localhost:8088` for local dev, or a local clone). This skill is the entry point: fetch the framework, then act.
 
 ## Step 1 — load the framework definition
 
 ```
-bash ~/.claude/atlas-fetch.sh llms.txt          # the index — start here
-bash ~/.claude/atlas-fetch.sh llms-full.txt     # the whole framework in one file
-bash ~/.claude/atlas-fetch.sh method/06-bootstrap.md   # a specific piece
+atlas method                  # the index — start here
+atlas method --full           # the whole framework in one text
+atlas method 06               # a specific piece (06, 06-bootstrap or method/06-bootstrap.md)
 ```
 
-`atlas-fetch.sh` resolves the single source in `~/.claude/atlas-source`: a URL → `curl`, a local path → `cat`. If it fails, the source is unreachable / misconfigured — surface that, don't improvise the framework from memory.
+`atlas method` reads the framework from the source the CLI keeps (`atlas method --source <url|path>` sets it: the site, a local copy of it, or a clone of the framework repo). If it fails, the source is unreachable / misconfigured — surface that, don't improvise the framework from memory.
 
 Returns the Atlas framework:
 
@@ -37,7 +37,7 @@ Returns the Atlas framework:
 
 ## Commands (the on-demand entry points)
 
-Two user-global slash commands operate on an Atlas; both are thin wrappers that fetch and follow the canonical recipe/model in the Atlas framework (`atlas-fetch.sh`):
+Two user-global slash commands operate on an Atlas; both are thin wrappers that fetch and follow the canonical recipe/model in the Atlas framework (`atlas method`):
 
 - **`/atlas-init`** — create an Atlas with the CLI (`atlas init`, or `atlas migrate` for an older one), add its sources with `atlas link`, then write their orientation blocks with the human.
 - **`/atlas-sync`** — checkpoint an existing Atlas: run `atlas sync` (doctor, lint, missing stamps, a closed SPEC out of Active, `atlas status`), reconcile the sources it reports with `atlas link` (and `atlas unlink`, with the human's approval, for a source that is gone), rewrite each Active block's Done / Next / Blocked, and update `CLAUDE.md` only if a standing fact changed.
@@ -50,8 +50,8 @@ The concept is an **Atlas** (a map of the project's sources), NOT a "workspace" 
 
 ## What is NOT in this skill
 
-- The actual architecture text → in the Atlas framework doc (`atlas-fetch.sh`).
+- The actual architecture text → in the Atlas framework doc (`atlas method`).
 - The actual CLAUDE.md skeleton → in the framework (`method/06-bootstrap.md`).
 - The actual bootstrap steps → in the framework (`method/06-bootstrap.md`).
 
-This skill only exists to route Claude to the **framework doc** at the right moments. If the configured source is unreachable and no local clone is set in `~/.claude/atlas-source`, surface the problem — do not improvise.
+This skill only exists to route Claude to the **framework doc** at the right moments. If the configured source is unreachable and no local clone is set with `atlas method --source`, surface the problem — do not improvise.
