@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart hook: orient the agent to the current Atlas so a new session never starts
 # cold. The text is `atlas orient`'s — the CLI is the one place it lives, for any workbench.
-# Gated on a CLAUDE.md or STATUS.md in cwd; injects the command's output, on an older Atlas
+# Gated on a CLAUDE.md or STATUS.md in cwd (AGENTS.md alone is any repo's); injects the command's output, on an older Atlas
 # its pointer to `atlas migrate` included.
 [ -f CLAUDE.md ] || [ -f STATUS.md ] || exit 0
 

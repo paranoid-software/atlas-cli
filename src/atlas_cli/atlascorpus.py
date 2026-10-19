@@ -55,7 +55,7 @@ def fingerprint(folder: Path, machinery: Path | None = None) -> str:
     """Changes whenever something the page shows changes: the Atlas's files, its sources' links,
     and the machinery installed in `machinery` when given."""
     paths = [entry for entry in folder.iterdir() if entry.is_file() and (_SPEC_FILE.match(entry.name) or _DRAFT_FILE.match(entry.name))]
-    paths += [folder / name for name in ("CLAUDE.md", "STATUS.md", "BACKLOG.md", _CANDIDATES, _DEVIATIONS, ATLAS_TOML)]
+    paths += [folder / name for name in ("AGENTS.md", "CLAUDE.md", "STATUS.md", "BACKLOG.md", _CANDIDATES, _DEVIATIONS, ATLAS_TOML)]
     archived = folder / "_archived"
     if archived.is_dir():
         paths += [entry for entry in archived.iterdir() if entry.is_file() and entry.suffix == ".md"]

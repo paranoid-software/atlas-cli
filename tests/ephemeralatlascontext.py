@@ -144,8 +144,8 @@ class EphemeralAtlasContext:
 
 
 def orient_sources(atlas: Path, *names: str) -> None:
-    """Give each source a filled orientation block in CLAUDE.md §1."""
-    path = atlas / "CLAUDE.md"
+    """Give each source a filled orientation block in the orientation file's §1."""
+    path = atlas / "AGENTS.md" if (atlas / "AGENTS.md").is_file() or not (atlas / "CLAUDE.md").is_file() else atlas / "CLAUDE.md"
     lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
     end = _end_of_section_one(lines)
     if end is None:

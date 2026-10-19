@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_toml, write_atlas_file
-from atlas_cli.sourcestate import atlas_entries
+from atlas_cli.sourcestate import IMPORT_STUB, LEGACY_ORIENTATION_FILE, ORIENTATION_FILE, atlas_entries
 from atlas_cli.workbenches import (
     KNOWN_WORKBENCHES,
     append_workbench,
@@ -45,6 +45,9 @@ def run_add(args: argparse.Namespace) -> int:
         print(f"{name} is already declared in {ATLAS_TOML}")
     write_atlas_file(folder / workbench_file(name), content)
     print(f"{action} {workbench_file(name)}")
+    if name == "claude" and (folder / ORIENTATION_FILE).is_file() and not (folder / LEGACY_ORIENTATION_FILE).exists():
+        write_atlas_file(folder / LEGACY_ORIENTATION_FILE, IMPORT_STUB)
+        print(f"created {LEGACY_ORIENTATION_FILE} as @{ORIENTATION_FILE}, so Claude Code reads the orientation file")
     return 0
 
 

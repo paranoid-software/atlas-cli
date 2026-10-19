@@ -82,12 +82,16 @@ edits through.
 
 ## 4. Use it
 
-- **Create an Atlas:** in a new folder, `atlas init`, then `atlas link <name> <path>` for each
-  source and `atlas doctor` to check them — or `/atlas-init` in Claude Code, which does the
+- **Create an Atlas:** in a new folder, `atlas init` (its orientation file is `AGENTS.md`, which
+  Codex, Cursor, OpenCode and others read on their own), then `atlas link <name> <path>`
+  for each source and `atlas doctor` to check them — or `/atlas-init` in Claude Code, which does the
   same with you, the workbench declaration below included.
 - **Declare its workbenches:** `atlas workbench add claude` writes `.claude/settings.local.json`,
-  the sources' real paths as readable directories for Claude Code. The declaration is the
-  Atlas's and travels with it; the file is per machine, never versioned, kept current by
+  the sources' real paths as readable directories for Claude Code, and `CLAUDE.md` as the one
+  line `@AGENTS.md`, so Claude Code reads the orientation file (that line is versioned, so a
+  clone reads it at once; Claude-specific lines may follow it). An Atlas whose orientation
+  file is still `CLAUDE.md` is renamed by `atlas migrate`. The declaration is the
+  Atlas's and travels with it; the settings file is per machine, never versioned, kept current by
   `atlas link` and `atlas unlink`, and rebuilt with the same command on another machine.
   `atlas doctor` reports a declared workbench whose file is missing or stale;
   `atlas workbench drop` undeclares one. (`.vscode/settings.json`, the editor's git settings

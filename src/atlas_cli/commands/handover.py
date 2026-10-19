@@ -10,6 +10,7 @@ from pathlib import Path
 
 from atlas_cli.atlascorpus import read_corpus
 from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_file
+from atlas_cli.sourcestate import orientation_path
 
 CANDIDATES = "CODING_RULES_CANDIDATES.md"
 DEVIATIONS = "CODING_RULES_DEVIATIONS.md"
@@ -153,7 +154,7 @@ def _conventions(folder: Path) -> str:
 
 def _orientation(folder: Path) -> str:
     try:
-        return read_atlas_file(folder / "CLAUDE.md")
+        return read_atlas_file(orientation_path(folder))
     except (OSError, UnicodeDecodeError):
         return ""
 

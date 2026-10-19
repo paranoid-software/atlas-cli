@@ -55,7 +55,7 @@ def test_say_what_each_store_is_for(monkeypatch):
         assert paragraphs[0].startswith("SESSION START — ")
         stores = paragraphs[1]
         assert stores.startswith("STORES — ")
-        assert "CLAUDE.md at the Atlas root is this project's orientation" in stores
+        assert "AGENTS.md at the Atlas root is this project's orientation" in stores
         assert "CODING_RULES_CANDIDATES.md holds rules this Atlas already applies" in stores
         assert "A source may carry its own rule files" in stores
         assert "the Atlas and the coding rules prevail" in stores
