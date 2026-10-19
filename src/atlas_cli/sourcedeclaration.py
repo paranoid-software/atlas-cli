@@ -26,15 +26,42 @@ def render_source_section(name: str, remote: str | None, repos: dict[str, str | 
     return "\n".join(lines) + "\n"
 
 
-def nested_repos(target: Path) -> dict[str, str | None]:
-    """The git repos that are direct children of a folder that is not a repo itself, with their origins."""
+SKIPPED_FOLDERS = {"node_modules", ".venv", "venv", "target"}
+
+
+MAX_DEPTH = 8
+
+
+def nested_repos(target: Path, with_origins: bool = True) -> dict[str, str | None]:
+    """The git repos inside a folder that is not a repo itself, at any depth, by their path with `/`.
+
+    The scan descends into folders that are not repos and never into a repo, a symlink, a hidden
+    folder, a `_`-prefixed one (the declaration rejects those names) or one of SKIPPED_FOLDERS;
+    it stops at MAX_DEPTH levels. Origins are read only when asked: the undeclared check needs
+    the names alone.
+    """
     if not target.is_dir() or (target / ".git").exists():
         return {}
-    return {
-        child.name: read_origin(child)
-        for child in sorted(target.iterdir(), key=lambda entry: entry.name)
-        if child.is_dir() and (child / ".git").exists()
-    }
+    found: dict[str, str | None] = {}
+    _scan(target, "", found, with_origins, 1)
+    return found
+
+
+def _scan(folder: Path, prefix: str, found: dict[str, str | None], with_origins: bool, depth: int) -> None:
+    if depth > MAX_DEPTH:
+        return
+    try:
+        children = sorted(folder.iterdir(), key=lambda entry: entry.name)
+    except OSError:
+        return
+    for child in children:
+        if child.is_symlink() or not child.is_dir() or child.name.startswith((".", "_")) or child.name in SKIPPED_FOLDERS:
+            continue
+        path = f"{prefix}{child.name}"
+        if (child / ".git").exists():
+            found[path] = read_origin(child) if with_origins else None
+            continue
+        _scan(child, f"{path}/", found, with_origins, depth + 1)
 
 
 def declared_repos(table: object) -> dict[str, str | None]:
@@ -43,16 +70,20 @@ def declared_repos(table: object) -> dict[str, str | None]:
         return {}
     repos: dict[str, str | None] = {}
     for child, child_table in table["repos"].items():
-        if not _is_plain_name(str(child)):
-            continue  # a hand-edited name like ".." or "a/b" would point outside the folder
+        if not is_repo_path(str(child)):
+            continue  # a hand-edited name like ".." or "/abs" would point outside the folder
         remote = child_table.get("remote") if isinstance(child_table, dict) else None
         repos[str(child)] = remote if isinstance(remote, str) and remote.strip() else None
     return repos
 
 
-def _is_plain_name(name: str) -> bool:
+def is_repo_path(path: str) -> bool:
+    """A repo's path inside a folder of repos: plain segments joined by `/`, never leaving the folder."""
+    if not path or "\\" in path or path.startswith("/") or path.endswith("/"):
+        return False
     try:
-        check_source_name(name)
+        for segment in path.split("/"):
+            check_source_name(segment)
     except ValueError:
         return False
     return True

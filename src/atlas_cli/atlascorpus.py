@@ -3,7 +3,8 @@ import re
 import tomllib
 from pathlib import Path
 
-from atlas_cli.atlasfiles import ATLAS_TOML
+from atlas_cli.atlasfiles import ATLAS_TOML, read_atlas_toml
+from atlas_cli.sourcedeclaration import declared_repos
 from atlas_cli.commands.status import read_active, read_backlog
 
 _SPEC_FILE = re.compile(r"^SPEC_(\d{4})_(\w+)\.md$")
@@ -62,10 +63,14 @@ def fingerprint(folder: Path, machinery: Path | None = None) -> str:
     entries: list[tuple] = []
     for path in paths:
         entries.append(_stat(str(path.relative_to(folder)), path))
+    try:
+        _, declared = read_atlas_toml(folder / ATLAS_TOML)
+    except ValueError:
+        declared = {}
     for entry in folder.iterdir():
         if entry.is_symlink():
             entries.append((f"link:{entry.name}", str(entry.readlink()), entry.exists()))
-            for git_dir in _git_dirs(entry):
+            for git_dir in _git_dirs(entry, declared_repos(declared.get(entry.name))):
                 for marker in ("HEAD", "index", "packed-refs"):
                     entries.append(_stat(f"git:{git_dir.relative_to(folder)}/{marker}", git_dir / marker))
                 heads = git_dir / "refs" / "heads"
@@ -80,16 +85,11 @@ def fingerprint(folder: Path, machinery: Path | None = None) -> str:
     return hashlib.sha256(repr(sorted(entries, key=repr)).encode("utf-8")).hexdigest()
 
 
-def _git_dirs(source: Path) -> list[Path]:
-    """The .git folders a source holds: its own, or its direct children's for a folder of repos."""
-    try:
-        if (source / ".git").is_dir():
-            return [source / ".git"]
-        if source.is_dir():
-            return [child / ".git" for child in sorted(source.iterdir()) if (child / ".git").is_dir()]
-    except OSError:
-        pass
-    return []
+def _git_dirs(source: Path, repos: dict) -> list[Path]:
+    """The .git folders a source holds: its own, or its declared repos' for a folder of repos."""
+    if (source / ".git").is_dir():
+        return [source / ".git"]
+    return [source / child / ".git" for child in repos if (source / child / ".git").is_dir()]
 
 
 def _stat(label: str, path: Path) -> tuple:
