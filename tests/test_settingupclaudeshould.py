@@ -20,6 +20,7 @@ _MACHINERY = (
 def _config_folder(tmp_path: Path, monkeypatch) -> Path:
     folder = tmp_path / "claude"
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
+    monkeypatch.setenv("ATLAS_CONFIG_DIR", str(tmp_path / "atlas-config"))
     return folder
 
 
@@ -40,10 +41,10 @@ def test_install_the_machinery_on_a_first_run(tmp_path, monkeypatch, capsys):
         assert (folder / name).read_bytes() == _packaged(name), name
     for name in (name for name in _MACHINERY if name.endswith(".sh")):
         assert os.access(folder / name, os.X_OK), name
-    assert (folder / "atlas-source").read_text(encoding="utf-8") == "https://atlas.paranoid.software\n"
+    assert not (folder / "atlas-source").exists()
     assert capsys.readouterr().out.splitlines() == [
         *(f"installed {name}" for name in _MACHINERY),
-        "created atlas-source",
+        "framework source: https://atlas.paranoid.software (`atlas method --source` changes it)",
         "wired SessionStart",
         "wired Stop",
         "wired UserPromptSubmit",
@@ -77,7 +78,7 @@ def test_change_nothing_on_a_second_run(tmp_path, monkeypatch, capsys):
     assert (folder / "settings.json").read_bytes() == settings_before
     assert capsys.readouterr().out.splitlines() == [
         *(f"unchanged {name}" for name in _MACHINERY),
-        "kept atlas-source",
+        "framework source: https://atlas.paranoid.software (`atlas method --source` changes it)",
         "already wired SessionStart",
         "already wired Stop",
         "already wired UserPromptSubmit",
@@ -152,15 +153,21 @@ def test_count_a_hook_wired_with_another_path_as_already_wired(tmp_path, monkeyp
     assert "already wired SessionStart" in capsys.readouterr().out.splitlines()
 
 
-def test_keep_an_existing_atlas_source(tmp_path, monkeypatch, capsys):
+def test_move_an_older_atlas_source_into_the_cli_once(tmp_path, monkeypatch, capsys):
     folder = _config_folder(tmp_path, monkeypatch)
     folder.mkdir()
+    config = tmp_path / "atlas-config"
+    monkeypatch.setenv("ATLAS_CONFIG_DIR", str(config))
     (folder / "atlas-source").write_text("http://localhost:8088\n", encoding="utf-8")
 
     main(["setup", "claude"])
+    moved = capsys.readouterr().out
+    (config / "source").write_text("http://localhost:9999\n", encoding="utf-8")
+    main(["setup", "claude"])
 
-    assert (folder / "atlas-source").read_text(encoding="utf-8") == "http://localhost:8088\n"
-    assert "kept atlas-source" in capsys.readouterr().out.splitlines()
+    assert (config / "source").read_text(encoding="utf-8") == "http://localhost:9999\n"
+    assert f"moved atlas-source into the CLI's framework source ({config / 'source'})" in moved.splitlines()
+    assert "kept atlas-source (unused: the CLI has its own framework source)" in capsys.readouterr().out.splitlines()
 
 
 def test_refuse_unreadable_settings_and_write_nothing(tmp_path, monkeypatch, capsys):

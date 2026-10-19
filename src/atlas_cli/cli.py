@@ -2,7 +2,7 @@ import argparse
 import sys
 
 from atlas_cli import __version__
-from atlas_cli.commands import doctor, handover, init, link, migrate, orient, plugin, setup, spec, status, sync, ui, unlink
+from atlas_cli.commands import doctor, handover, init, link, method, migrate, orient, plugin, setup, spec, status, sync, ui, unlink
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -23,6 +23,7 @@ def _build_parser() -> argparse.ArgumentParser:
     spec.register(subparsers)
     sync.register(subparsers)
     handover.register(subparsers)
+    method.register(subparsers)
     migrate.register(subparsers)
     ui.register(subparsers)
     return parser

@@ -7,7 +7,7 @@ Checkpoint the current Atlas's memory now. **The model — what STATUS holds, wh
 
 Optional focus: $ARGUMENTS
 
-1. **Load the definition:** `bash ~/.claude/atlas-fetch.sh method/03-atlas-anatomy.md` (the files of record, `STATUS.md`'s three sections, "Sources: declared once, located per machine") and `bash ~/.claude/atlas-fetch.sh method/04-spec-lifecycle.md` (what a SPEC is / is not, the resume & checkpoint protocol), or invoke the `workspace-baseline` skill. `atlas-fetch.sh` reads the single source in `~/.claude/atlas-source` (URL → curl, local clone → cat). If the fetch fails, surface it — don't improvise.
+1. **Load the definition:** `atlas method 03` (the files of record, `STATUS.md`'s three sections, "Sources: declared once, located per machine") and `atlas method 04` (what a SPEC is / is not, the resume & checkpoint protocol), or invoke the `workspace-baseline` skill. `atlas method` reads the source the CLI keeps (`atlas method --source` sets it). If it fails, surface it — don't improvise.
 2. **Locate the Atlas root** — nearest dir at/above CWD with `STATUS.md`. If none, say it's not an Atlas and stop. Run every `atlas` command from that root. If it has no `_settings/atlas.toml`, it is an older Atlas: point to `/atlas-init` (`atlas migrate`) and stop.
 3. **Run the mechanical part:** `atlas sync`. It prints the doctor's report, what it wrote (a missing `started:` on an Active SPEC, a missing `closed:` on an archived one, a closed SPEC still in Active moved to Recently closed), `atlas spec lint` of what remains, what it only reports (a SPEC at the root in neither the backlog nor Active, a SPEC listed whose file is nowhere) and `atlas status`. Read all of it before writing anything.
 4. **Reconcile the sources** from the doctor's lines:

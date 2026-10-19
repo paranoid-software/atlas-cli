@@ -4,6 +4,8 @@ import os
 from importlib.resources import files
 from pathlib import Path
 
+from atlas_cli.commands import method
+
 MACHINERY = (
     "atlas-fetch.sh",
     "hooks/session-orient.sh",
@@ -22,7 +24,6 @@ HOOKS = (
     ("PostToolUse", "coding-rules-gate.sh", "mcp__.*|Read"),
 )
 ATLAS_SOURCE = "atlas-source"
-DEFAULT_SOURCE = "https://atlas.paranoid.software\n"
 SETTINGS = "settings.json"
 
 
@@ -76,11 +77,19 @@ def _install_machinery(target: Path) -> list[str]:
 
 
 def _install_source(destination: Path) -> str:
-    if destination.exists():
-        return f"kept {ATLAS_SOURCE}"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(DEFAULT_SOURCE, encoding="utf-8", newline="\n")
-    return f"created {ATLAS_SOURCE}"
+    """The framework's source is the CLI's own setting now; an old atlas-source moves into it once."""
+    if not destination.is_file():
+        return f"framework source: {method.read_source()} (`atlas method --source` changes it)"
+    if method.has_source():
+        return f"kept {ATLAS_SOURCE} (unused: the CLI has its own framework source)"
+    try:
+        value = destination.read_text(encoding="utf-8").strip().splitlines()[0].strip()
+    except (OSError, UnicodeDecodeError, IndexError):
+        value = ""
+    if not value or value == method.DEFAULT_SOURCE:
+        return f"kept {ATLAS_SOURCE} (unused: the CLI reads the framework from {method.read_source()})"
+    path = method.write_source(value)
+    return f"moved {ATLAS_SOURCE} into the CLI's framework source ({path})"
 
 
 def _plan_settings(path: Path, target: Path) -> tuple[list[str], str | None]:
