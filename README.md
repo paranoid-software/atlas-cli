@@ -3,22 +3,23 @@
 The [Atlas](https://atlas.paranoid.software) method made executable: create an Atlas and keep
 it in order while several people and agents work in it.
 
-> **What Atlas is:** a Claude-anchored, spec-driven way to keep the context of real software
-> projects — one folder per project, its sources linked by symlink, so any agent opens it cold
-> and knows what it is, where each source lives, where the work stands and how it gets closed.
+> **What Atlas is:** a spec-driven way to keep the context of real software projects — one
+> folder per project, its sources linked by symlink, so any agent or editor opens it cold and
+> knows what it is, where each source lives, where the work stands and how it gets closed. This
+> CLI is its anchor: `atlas orient`, `atlas spec`, `atlas sync` and `atlas handover` carry the
+> whole method, with any workbench or none.
 
 ## 1. Prerequisites (macOS + Windows)
 
-> **Windows users:** run everything below in **Git Bash** (installed with Git for Windows), not
-> PowerShell or cmd: the Atlas hooks are bash scripts, and Claude Code runs them through Git
-> Bash. Install tools with `winget` in PowerShell, then **reopen Git Bash**.
+> **Windows users:** install the tools with `winget` in PowerShell. If you install a
+> workbench's hooks (step 3), run that workbench from **Git Bash** (installed with Git for
+> Windows): the hooks are bash scripts.
 
 | Tool | What it's for | macOS | Windows (PowerShell, then reopen Git Bash) |
 |---|---|---|---|
-| **Git** (+ Git Bash) | Sources and shared Atlases are git repos; on Windows, Git Bash runs the hooks. | `brew install git` | `winget install Git.Git` |
-| **jq** | The hooks read and write JSON with it. Without it, they stay silent and the coding-rules gate lets every edit through. | `brew install jq` | `winget install jqlang.jq` |
+| **Git** (+ Git Bash) | Sources and shared Atlases are git repos; on Windows, Git Bash runs a workbench's hooks. | `brew install git` | `winget install Git.Git` |
 | **uv** | Installs the `atlas` CLI with its own Python. | `brew install uv` | `winget install astral-sh.uv` |
-| **Claude Code** | The anchor agent. | see claude.com/claude-code | see claude.com/claude-code |
+| **jq** *(only with a workbench's hooks)* | The hooks read and write JSON with it. Without it, they stay silent and the coding-rules gate lets every edit through. | `brew install jq` | `winget install jqlang.jq` |
 
 **Windows only — allow symlinks:** Settings → *Privacy & security* → *For developers* → turn
 **Developer Mode ON**, so `atlas link` can create symlinks without admin rights.
@@ -26,7 +27,7 @@ it in order while several people and agents work in it.
 Check:
 
 ```bash
-git --version && jq --version && uv --version && claude --version
+git --version && uv --version
 ```
 
 ## 2. Install
@@ -39,7 +40,22 @@ The command is `atlas`; `atlas --version` confirms it. If the shell can't find i
 `uv tool update-shell` and open a new terminal. Upgrade later with
 `uv tool install --reinstall paranoid-atlas-cli`.
 
-## 3. Install the machinery for Claude Code
+## 3. Workbenches
+
+The CLI is the whole method: any editor or agent that opens the Atlas and has a terminal works
+with it — `atlas orient` to start, `atlas spec` and `atlas sync` to move the work,
+`atlas handover` to delegate. A workbench may have **machinery** — hooks, commands, skills —
+that wraps those commands so discipline doesn't depend on the agent remembering. It is
+optional, installed per workbench with `atlas setup <workbench>`, and never does what the CLI
+does.
+
+| Workbench | Setup | What it gets |
+|---|---|---|
+| **Claude Code** | `atlas setup claude` | hooks, `/atlas-init`, `/atlas-sync`, the `workspace-baseline` skill |
+| Cursor | reads Claude Code's `~/.claude` (below) | the same, through that folder |
+| others | the CLI alone, until their `atlas setup <workbench>` exists | `atlas orient`, `spec`, `sync`, `handover` |
+
+### Claude Code
 
 ```bash
 atlas setup claude
@@ -95,7 +111,8 @@ edits through.
   mechanics (doctor, lint, missing stamps, a closed SPEC out of Active; `--check` writes nothing);
   `atlas orient` prints what an agent
   needs at session start — stores, cadence, coding rules, state — and is the entry point for
-  any workbench or editor (Claude Code's session hook just calls it); `/atlas-sync` is the checkpoint;
+  any workbench or editor (Claude Code's session hook just calls it); the checkpoint is
+  `atlas sync` plus the Done / Next / Blocked lines (`/atlas-sync` in Claude Code does both);
   `atlas unlink <name>` drops a source the Atlas no longer uses; `atlas ui` opens a local,
   read-only page on the Atlas — doctor made plain, the SPECs with search, stats, rules and
   machinery.
