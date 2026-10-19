@@ -163,7 +163,7 @@ def _nested_findings(folder: Path, name: str, repos: dict[str, str | None]) -> l
         if child_remote is not None:
             fix.append(f"git clone {shlex.quote(strip_credentials(child_remote))} {shlex.quote(f'{name}/{child}')}")
         findings.append(_finding("missing", f"{name}/{child}", fix=fix))
-    for child in nested_repos(source):
+    for child in nested_repos(source, with_origins=False):
         if child not in repos:
             findings.append(
                 _finding(
