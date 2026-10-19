@@ -145,6 +145,7 @@ def machinery_state() -> dict:
     """What `setup claude` would find: each machinery file against the package, each hook wired or not."""
     target = config_folder()
     machinery = []
+    workbench = "claude"
     for name in MACHINERY:
         packaged = files("atlas_cli").joinpath("machinery", "claude", name).read_bytes()
         destination = target / name
@@ -170,4 +171,4 @@ def machinery_state() -> dict:
     for event, script, _matcher in HOOKS:
         entries = hooks_table.get(event, [])
         hooks.append({"event": event, "script": script, "wired": isinstance(entries, list) and _is_wired(entries, script)})
-    return {"folder": str(target), "files": machinery, "hooks": hooks, "error": error}
+    return {"workbench": workbench, "folder": str(target), "files": machinery, "hooks": hooks, "error": error}

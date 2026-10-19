@@ -24,6 +24,7 @@ def test_declare_a_new_git_source_and_point_the_symlink_at_it(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         source = world.source("log-daemon")
 
         assert main(["link", "log-daemon", str(source)]) == 0
@@ -54,6 +55,7 @@ def test_declare_a_source_that_is_not_a_git_repo(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         source = world.source("notes")
 
         assert main(["link", "notes", str(source)]) == 0
@@ -67,6 +69,7 @@ def test_declare_a_git_source_that_has_no_origin(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         source = world.source("scratch")
 
         assert main(["link", "scratch", str(source)]) == 0
@@ -81,6 +84,7 @@ def test_store_a_relative_path_as_absolute(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         source = world.source("log-daemon")
 
         assert main(["link", "log-daemon", "../log-daemon"]) == 0
@@ -95,6 +99,7 @@ def test_keep_existing_editor_and_claude_settings(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         vscode_path = atlas / ".vscode/settings.json"
         vscode = json.loads(vscode_path.read_text(encoding="utf-8"))
         vscode["editor.tabSize"] = 4
@@ -120,6 +125,7 @@ def test_add_a_second_source_beside_the_first(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         first = world.source("atlas")
         second = world.source("atlas-cli")
 
@@ -152,6 +158,7 @@ def test_refuse_a_path_that_does_not_exist(monkeypatch, capsys):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         before = _snapshot(atlas)
 
         assert main(["link", "log-daemon", str(world.root / "missing")]) == 1
@@ -168,6 +175,7 @@ def test_refuse_a_name_that_already_exists_in_the_atlas(monkeypatch, capsys):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         (atlas / "log-daemon").write_text("keep me", encoding="utf-8")
         before = _snapshot(atlas)
         source = world.source("log-daemon")
@@ -185,6 +193,7 @@ def test_refuse_a_name_that_is_not_a_single_segment(monkeypatch, capsys, name):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         before = _snapshot(atlas)
         source = world.source("log-daemon")
 
@@ -201,6 +210,7 @@ def test_refuse_unreadable_toml_and_change_nothing(monkeypatch, capsys):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         (atlas / "_settings/atlas.toml").write_text("version = [\n", encoding="utf-8")
         before = _snapshot(atlas)
         source = world.source("log-daemon")
@@ -217,6 +227,7 @@ def test_refuse_unreadable_claude_settings_and_change_nothing(monkeypatch, capsy
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         (atlas / ".claude/settings.local.json").write_text("{ not json", encoding="utf-8")
         before = _snapshot(atlas)
         source = world.source("log-daemon")

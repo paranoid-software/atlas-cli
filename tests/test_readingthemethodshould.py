@@ -172,3 +172,4 @@ def test_name_atlas_method_in_every_machinery_text():
     for name in texts:
         text = machinery.joinpath(*name.split("/")).read_text(encoding="utf-8")
         assert "atlas-source" not in text and "atlas-fetch" not in text, name
+    assert "atlas workbench add claude" in machinery.joinpath("commands", "atlas-init.md").read_text(encoding="utf-8")

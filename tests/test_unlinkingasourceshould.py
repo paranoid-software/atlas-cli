@@ -17,6 +17,7 @@ _REMINDER = "Remove the orientation block of log-daemon from CLAUDE.md §1.\n"
 def _init(context: EphemeralAtlasContext, monkeypatch) -> Path:
     monkeypatch.chdir(context.atlas)
     assert main(["init"]) == 0
+    assert main(["workbench", "add", "claude"]) == 0
     return context.atlas
 
 
@@ -59,6 +60,8 @@ def test_drop_a_linked_source_and_leave_the_rest_as_it_was(monkeypatch, capsys):
             "\n"
             "[plugins]\n"
             "\n"
+            "[workbenches.claude]\n"
+            "\n"
             "# Sources this Atlas maps.\n"
             "[sources.atlas]\n"
             "\n"
@@ -76,6 +79,8 @@ def test_drop_a_linked_source_and_leave_the_rest_as_it_was(monkeypatch, capsys):
             "version = 1\n"
             "\n"
             "[plugins]\n"
+            "\n"
+            "[workbenches.claude]\n"
             "\n"
             "# Sources this Atlas maps.\n"
             "[sources.atlas]\n"
@@ -107,12 +112,12 @@ def test_drop_a_source_declared_with_a_quoted_key_or_a_comment(monkeypatch, caps
     with EphemeralAtlasContext(git_sources=[], plain_sources=["log-daemon"]) as context:
         atlas = _init(context, monkeypatch)
         _link(context, "log-daemon")
-        _write(atlas / "_settings/atlas.toml", f"version = 1\n\n[plugins]\n\n{header}\n")
+        _write(atlas / "_settings/atlas.toml", f"version = 1\n\n[plugins]\n\n[workbenches.claude]\n\n{header}\n")
 
         code, _ = _unlink("log-daemon", capsys)
 
         assert code == 0
-        assert (atlas / "_settings/atlas.toml").read_text(encoding="utf-8") == "version = 1\n\n[plugins]\n"
+        assert (atlas / "_settings/atlas.toml").read_text(encoding="utf-8") == "version = 1\n\n[plugins]\n\n[workbenches.claude]\n"
         assert not (atlas / "log-daemon").is_symlink()
 
 
@@ -162,7 +167,7 @@ def test_clean_a_declared_source_that_has_no_symlink(monkeypatch, capsys):
         code, out = _unlink("log-daemon", capsys)
 
         assert code == 0
-        assert (atlas / "_settings/atlas.toml").read_text(encoding="utf-8") == "version = 1\n\n[plugins]\n"
+        assert (atlas / "_settings/atlas.toml").read_text(encoding="utf-8") == "version = 1\n\n[plugins]\n\n[workbenches.claude]\n"
         assert _read_json(atlas / ".vscode/settings.json")["git.scanRepositories"] == []
         assert out == "updated _settings/atlas.toml\nupdated .vscode/settings.json\n" + _REMINDER
         assert "log-daemon" not in _doctor(capsys)
@@ -193,12 +198,12 @@ def test_remove_an_undeclared_symlink_and_its_settings(monkeypatch, capsys):
     with EphemeralAtlasContext(git_sources=[], plain_sources=["log-daemon"]) as context:
         atlas = _init(context, monkeypatch)
         _link(context, "log-daemon")
-        _write(atlas / "_settings/atlas.toml", "version = 1\n\n[plugins]\n")
+        _write(atlas / "_settings/atlas.toml", "version = 1\n\n[plugins]\n\n[workbenches.claude]\n")
 
         code, out = _unlink("log-daemon", capsys)
 
         assert code == 0
-        assert (atlas / "_settings/atlas.toml").read_text(encoding="utf-8") == "version = 1\n\n[plugins]\n"
+        assert (atlas / "_settings/atlas.toml").read_text(encoding="utf-8") == "version = 1\n\n[plugins]\n\n[workbenches.claude]\n"
         assert _read_json(atlas / ".vscode/settings.json")["git.scanRepositories"] == []
         assert _read_json(atlas / ".claude/settings.local.json")["permissions"]["additionalDirectories"] == []
         assert not (atlas / "log-daemon").is_symlink()

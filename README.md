@@ -84,7 +84,15 @@ edits through.
 
 - **Create an Atlas:** in a new folder, `atlas init`, then `atlas link <name> <path>` for each
   source and `atlas doctor` to check them — or `/atlas-init` in Claude Code, which does the
-  same with you.
+  same with you, the workbench declaration below included.
+- **Declare its workbenches:** `atlas workbench add claude` writes `.claude/settings.local.json`,
+  the sources' real paths as readable directories for Claude Code. The declaration is the
+  Atlas's and travels with it; the file is per machine, never versioned, kept current by
+  `atlas link` and `atlas unlink`, and rebuilt with the same command on another machine.
+  `atlas doctor` reports a declared workbench whose file is missing or stale;
+  `atlas workbench drop` undeclares one. (`.vscode/settings.json`, the editor's git settings
+  with relative paths, is the Atlas's own file: `atlas init` creates it, every `atlas link`
+  keeps it, and it is versioned with the Atlas, whatever workbench you use.)
 - **Join a shared Atlas:** clone it, run `atlas doctor` inside it and follow what it says.
 - **Older Atlas:** `atlas migrate` shows the plan to bring it to the current model;
   `atlas migrate --apply` applies it.

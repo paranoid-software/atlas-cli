@@ -10,6 +10,7 @@ def test_repoint_the_symlink_and_refresh_the_remote(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         kept = world.source("atlas")
         current = world.source("old-atlas-cli")
         moved = world.source("new-atlas-cli")
@@ -43,6 +44,7 @@ def test_create_the_symlink_when_the_declaration_has_none(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         current = world.source("old-log-daemon")
         moved = world.source("new-log-daemon")
         assert main(["link", "log-daemon", str(current)]) == 0
@@ -62,6 +64,7 @@ def test_repoint_a_dangling_symlink(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         current = world.source("old-log-daemon")
         moved = world.source("new-log-daemon")
         assert main(["link", "log-daemon", str(current)]) == 0
@@ -80,6 +83,7 @@ def test_drop_the_remote_when_the_new_path_is_not_a_git_repo(monkeypatch):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         current = world.source("old-notes")
         moved = world.source("new-notes")
         assert main(["link", "notes", str(current)]) == 0
@@ -98,6 +102,7 @@ def test_refuse_to_rebind_over_a_real_file(monkeypatch, capsys):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         current = world.source("old-log-daemon")
         moved = world.source("new-log-daemon")
         assert main(["link", "log-daemon", str(current)]) == 0
@@ -125,6 +130,7 @@ def test_refuse_a_missing_path_and_leave_the_symlink(monkeypatch, capsys):
         atlas = world.atlas
         monkeypatch.chdir(atlas)
         assert main(["init"]) == 0
+        assert main(["workbench", "add", "claude"]) == 0
         current = world.source("old-log-daemon")
         assert main(["link", "log-daemon", str(current)]) == 0
         before = (atlas / "_settings/atlas.toml").read_bytes()

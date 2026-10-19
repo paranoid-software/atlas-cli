@@ -4,14 +4,13 @@ from pathlib import Path
 
 from atlas_cli.atlasfiles import (
     ATLAS_TOML,
-    CLAUDE_SETTINGS,
     GITIGNORE,
     VSCODE_SETTINGS,
     plan_json_file,
     render_template,
     write_atlas_file,
 )
-from atlas_cli.settingscompletion import complete_claude_settings, complete_vscode_settings
+from atlas_cli.settingscompletion import complete_vscode_settings
 
 ATLAS_FILES = {
     "CLAUDE.md": "CLAUDE.md",
@@ -47,7 +46,7 @@ def run(args: argparse.Namespace) -> int:
         print(f"{action} {path}")
     if plan[GITIGNORE][0] == "kept":
         print(f"Check that the existing {GITIGNORE} keeps only the Atlas's own files (see 07-sharing-an-atlas).")
-    print("Next: add each source with `atlas link <name> <path>`.")
+    print("Next: add each source with `atlas link <name> <path>`, and declare the workbenches it is worked with: `atlas workbench add claude`.")
     return 0
 
 
@@ -56,7 +55,6 @@ def _plan_base_set(folder: Path, today: date) -> dict[str, tuple[str, str | None
         path: ("created", render_template(template, name=folder.name, today=today.isoformat()))
         for path, template in ATLAS_FILES.items()
     }
-    plan[CLAUDE_SETTINGS] = plan_json_file(folder / CLAUDE_SETTINGS, complete_claude_settings)
     plan[VSCODE_SETTINGS] = plan_json_file(folder / VSCODE_SETTINGS, complete_vscode_settings)
     if (folder / GITIGNORE).exists():
         plan[GITIGNORE] = ("kept", None)

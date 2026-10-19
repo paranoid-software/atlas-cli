@@ -116,6 +116,17 @@ export class DoctorPlugster extends Plugster {
                 why: 'Tools load them on their own when working inside that source. They are its context, not this Atlas\'s rules.',
                 fixBy: 'Read them with caution. Where they contradict the Atlas or the coding rules, the Atlas and the coding rules prevail, and the contradiction is a decision for the human. Nothing to fix.'
             },
+            workbench: {
+                title: finding.detail === 'unknown' ? '{subject} is a workbench this CLI does not know'
+                    : (String(finding.detail).startsWith('undeclared') ? 'The {subject} workbench\'s file is there, undeclared' : 'The {subject} workbench\'s file is ' + finding.detail),
+                why: finding.detail === 'unknown'
+                    ? 'The Atlas declares it, but this version of the CLI has no files for it.'
+                    : (String(finding.detail).startsWith('undeclared')
+                        ? 'Without the declaration, atlas link and atlas unlink leave that file alone, so the workbench stops seeing new sources.'
+                        : 'Its file in the Atlas is written per machine from the declared sources; it is not there, or does not match them.'),
+                fixWith: 'Rewrite it:',
+                fixBy: 'Upgrade the CLI, or drop the declaration: atlas workbench drop {subject}'
+            },
             unoriented: {
                 title: '{subject} has no orientation block',
                 why: 'Agents don\'t know what this source is or how it is worked on.',

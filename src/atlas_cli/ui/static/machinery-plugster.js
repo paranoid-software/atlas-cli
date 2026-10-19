@@ -20,7 +20,7 @@ export class MachineryPlugster extends Plugster {
     }
 
     _render(state) {
-        let folder = this._t('In {folder}').replace('{folder}', state.folder);
+        let folder = this._t('{workbench} workbench · in {folder}').replace('{workbench}', state.workbench === 'claude' ? 'Claude Code' : state.workbench).replace('{folder}', state.folder);
         if (state.error) folder = `${folder} — ${state.error}`;
         this._.folderLabel.text(folder);
         this._.machineryList.clear();

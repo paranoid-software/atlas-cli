@@ -3,13 +3,13 @@ from pathlib import Path
 
 from atlas_cli.atlasfiles import (
     ATLAS_TOML,
-    CLAUDE_SETTINGS,
     VSCODE_SETTINGS,
     plan_json_file,
     read_atlas_toml,
     write_atlas_file,
 )
-from atlas_cli.settingscompletion import add_directory, scan_entries, set_scan_repositories
+from atlas_cli.settingscompletion import scan_entries, set_scan_repositories
+from atlas_cli.workbenches import declared_workbenches, on_link
 from atlas_cli.sourcedeclaration import (
     append_source,
     check_source_name,
@@ -74,7 +74,7 @@ def _plan_link(folder: Path, name: str, given: Path) -> dict:
     files = [(ATLAS_TOML, ("updated", toml_text))]
     scan = set_scan_repositories(name, scan_entries(name, repos))
     files.append((VSCODE_SETTINGS, plan_json_file(folder / VSCODE_SETTINGS, scan)))
-    files.append((CLAUDE_SETTINGS, plan_json_file(folder / CLAUDE_SETTINGS, add_directory(str(target), previous))))
+    files.extend(on_link(folder, declared_workbenches(text), name, target, previous, repos))
     return {"name": name, "target": target, "link": link_action, "files": files}
 
 

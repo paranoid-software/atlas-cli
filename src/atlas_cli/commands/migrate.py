@@ -5,23 +5,18 @@ from pathlib import Path
 
 from atlas_cli.atlasfiles import (
     ATLAS_TOML,
-    CLAUDE_SETTINGS,
-    GITIGNORE,
     VSCODE_SETTINGS,
     plan_json_file,
+    GITIGNORE,
     read_atlas_file,
     render_template,
     write_atlas_file,
 )
 from atlas_cli.plugindeclaration import KNOWN_PLUGINS, append_plugin
-from atlas_cli.settingscompletion import (
-    add_directory,
-    add_scan_repository,
-    complete_claude_settings,
-    complete_vscode_settings,
-)
-from atlas_cli.settingscompletion import scan_entries
+from atlas_cli.settingscompletion import add_scan_repository, complete_vscode_settings, scan_entries
 from atlas_cli.sourcedeclaration import append_source, nested_repos, read_origin
+from atlas_cli.sourcestate import atlas_entries
+from atlas_cli.workbenches import KNOWN_WORKBENCHES, append_workbench, rebuild, workbench_file
 
 V0_MARKERS = ("CLAUDE.md", "STATUS.md")
 COCO_CANDIDATES = "COCO_CANDIDATES.md"
@@ -97,9 +92,13 @@ def _plan_migration(folder: Path) -> dict:
         scanned.extend(scan_entries(name, repos))
     _, writes[VSCODE_SETTINGS] = plan_json_file(folder / VSCODE_SETTINGS, _complete_vscode(scanned))
     steps.append((f"complete {VSCODE_SETTINGS}", f"completed {VSCODE_SETTINGS}"))
-    directories = [str(target) for target in targets.values()]
-    _, writes[CLAUDE_SETTINGS] = plan_json_file(folder / CLAUDE_SETTINGS, _complete_claude(directories))
-    steps.append((f"complete {CLAUDE_SETTINGS}", f"completed {CLAUDE_SETTINGS}"))
+    declared = tomllib.loads(toml_text).get("sources", {})
+    entries = atlas_entries(folder)
+    for workbench in KNOWN_WORKBENCHES:
+        if (folder / workbench_file(workbench)).is_file():
+            toml_text = append_workbench(toml_text, workbench)
+            _, writes[workbench_file(workbench)] = rebuild(folder, workbench, declared, entries)
+            steps.append((f"declare workbench {workbench} and complete {workbench_file(workbench)}", f"declared workbench {workbench} and completed {workbench_file(workbench)}"))
     if (folder / GITIGNORE).exists():
         steps.append((f"keep {GITIGNORE}", f"kept {GITIGNORE}"))
     else:
@@ -140,16 +139,6 @@ def _complete_vscode(names: list[str]):
         complete_vscode_settings(settings)
         for name in names:
             add_scan_repository(name)(settings)
-        return settings
-
-    return complete
-
-
-def _complete_claude(directories: list[str]):
-    def complete(settings: dict) -> dict:
-        complete_claude_settings(settings)
-        for directory in directories:
-            add_directory(directory)(settings)
         return settings
 
     return complete
